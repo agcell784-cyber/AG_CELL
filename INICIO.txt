@@ -1,0 +1,5 @@
+AG_CELL V8
+1. Abre index.html desde un hosting/servidor web.
+2. Crea tu cuenta.
+3. Usa la misma cuenta en el celular y computador.
+4. El proyecto Supabase ya está configurado en la aplicación.
