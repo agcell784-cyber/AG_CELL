@@ -82,7 +82,49 @@ if(!d.customer_name||!d.model){toast("Cliente y modelo son obligatorios",true);r
 const secret=$("f_secret").value;if(secret){d.lock_secret_ciphertext=await encryptSecret(secret)}else if(old)d.lock_secret_ciphertext=old.lock_secret_ciphertext||null;
 const {error}=await sb.from("devices").upsert(d);if(error){toast(error.message,true);return}state.devices=[...state.devices.filter(x=>x.id!==d.id),d];saveCache();toast("Equipo guardado");devicesView()}
 function editDevice(id){state.tab="equipos";$("main").innerHTML=deviceForm(state.devices.find(x=>x.id===id)||{})}
-async function deleteDevice(id){if(!confirm("¿Eliminar este equipo y sus fotos?"))return;const {error}=await sb.from("devices").delete().eq("id",id);if(error){toast(error.message,true);return}state.devices=state.devices.filter(x=>x.id!==id);state.photos=state.photos.filter(x=>x.device_id!==id);saveCache();listDevices()}
+
+async function deleteDevice(id){
+  const device=state.devices.find(x=>x.id===id);
+  if(!device){
+    toast("No se encontró el equipo",true);
+    return;
+  }
+
+  const relatedOrders=state.orders.filter(o=>o.device_id===id);
+
+  const message=relatedOrders.length
+    ? `Este equipo tiene ${relatedOrders.length} pedido(s) asociado(s). Si continúas, también se eliminarán esos pedidos. ¿Deseas continuar?`
+    : "¿Eliminar este equipo y sus fotos?";
+
+  if(!confirm(message)) return;
+
+  if(relatedOrders.length){
+    const {error:ordersError}=await sb
+      .from("orders")
+      .delete()
+      .eq("device_id",id);
+
+    if(ordersError){
+      toast("No se pudieron eliminar los pedidos: "+ordersError.message,true);
+      return;
+    }
+  }
+
+  const {error}=await sb.from("devices").delete().eq("id",id);
+
+  if(error){
+    toast("No se pudo eliminar el equipo: "+error.message,true);
+    return;
+  }
+
+  state.orders=state.orders.filter(o=>o.device_id!==id);
+  state.devices=state.devices.filter(x=>x.id!==id);
+  state.photos=state.photos.filter(x=>x.device_id!==id);
+
+  saveCache();
+  listDevices();
+  toast("Equipo y pedidos asociados eliminados");
+}
 async function showSecret(id){const d=state.devices.find(x=>x.id===id);if(!d?.lock_secret_ciphertext){toast("No hay acceso guardado");return}const s=await decryptSecret(d.lock_secret_ciphertext);alert(s||"No se pudo descifrar. Vuelve a introducir la contraseña de tu cuenta.");}
 async function encryptSecret(s){if(!state.cryptoKey)return null;const iv=crypto.getRandomValues(new Uint8Array(12));const enc=new TextEncoder();const ct=await crypto.subtle.encrypt({name:"AES-GCM",iv},state.cryptoKey,enc.encode(s));return JSON.stringify({iv:b64(iv),ct:b64(new Uint8Array(ct))})}
 async function decryptSecret(v){try{if(!state.cryptoKey)return null;const x=JSON.parse(v);const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:ub64(x.iv)},state.cryptoKey,ub64(x.ct));return new TextDecoder().decode(pt)}catch{return null}}
