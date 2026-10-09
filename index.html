@@ -69,7 +69,34 @@ $("main").innerHTML=`<h2>Panel</h2><div class="grid"><div class="card stat"><sma
 <div class="two"><div class="card"><h3>Estado de sincronización</h3><p class="ok">● ${state.cloud?"Conectado a Supabase":"Modo local"}</p><p class="small muted">La información se guarda en la nube cuando hay sesión y conexión.</p></div><div class="card"><h3>Acciones rápidas</h3><div class="actions"><button onclick="newDevice()">+ Recibir equipo</button><button class="ghost" onclick="newCash('income')">+ Ingreso</button><button class="ghost" onclick="newCash('expense')">+ Gasto</button></div></div></div>`}
 function devicesView(){const q=prompt?null:null;$("main").innerHTML=`<div class="card"><div style="display:flex;gap:8px;align-items:center"><h2 style="margin:0">Equipos / Recepción</h2><button class="right" onclick="newDevice()">+ Recibir equipo</button></div><label>Buscar</label><input id="deviceSearch" oninput="listDevices()" placeholder="Cliente, teléfono, modelo, IMEI..."></div><div id="deviceList"></div>`;listDevices()}
 function listDevices(){const q=($("deviceSearch")?.value||"").toLowerCase();const arr=state.devices.filter(d=>[d.customer_name,d.customer_phone,d.model,d.imei].join(" ").toLowerCase().includes(q));$("deviceList").innerHTML=arr.map(d=>`<div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><div><h3>${esc(d.customer_name)} — ${esc(d.model)}</h3><p class="muted">${esc(d.imei||"Sin IMEI")} · ${esc(d.customer_phone||"Sin teléfono")}</p></div><span class="badge">${esc(d.lock_type||"Ninguno")}</span></div><p><b>Trabajo:</b> ${esc(d.work)}</p><p><b>Estado físico:</b> ${esc(d.condition)}</p><div class="photos">${state.photos.filter(x=>x.device_id===d.id).map(x=>`<img src="${esc(x.url)}" title="${esc(x.caption)}">`).join("")}</div><div class="actions"><button onclick="editDevice('${d.id}')">Editar</button><button class="ghost" onclick="showSecret('${d.id}')">Ver acceso</button><button class="ghost" onclick="photoInput('${d.id}')">Agregar fotos</button><button class="danger" onclick="deleteDevice('${d.id}')">Eliminar</button></div></div>`).join("")||`<div class="card"><p class="muted">No hay equipos registrados.</p></div>`}
-function deviceForm(d={}){return `<div class="card"><h2>${d.id?"Editar":"Recibir"} equipo</h2><div class="formgrid">
+function deviceForm(d={}){
+  return `<div class="card">
+    <h2>${d.id?"Editar":"Recibir"} equipo</h2>
+    <div class="formgrid">
+      <div><label>Cliente</label><input id="f_name" value="${esc(d.customer_name)}"></div>
+      <div><label>Teléfono</label><input id="f_phone" value="${esc(d.customer_phone)}"></div>
+      <div><label>Marca / modelo</label><input id="f_model" value="${esc(d.model)}"></div>
+      <div><label>IMEI / serial</label><input id="f_imei" value="${esc(d.imei)}"></div>
+      <div><label>Color</label><input id="f_color" value="${esc(d.color)}"></div>
+      <div><label>Tipo de acceso</label>
+        <select id="f_lock">${["Ninguno","PIN","Contraseña","Patrón","Huella","Rostro","Otro"].map(x=>`<option ${d.lock_type===x?"selected":""}>${x}</option>`).join("")}</select>
+      </div>
+      <div><label>Acceso del equipo</label><input id="f_secret" type="password" placeholder="${d.id?"Dejar vacío para conservar":"Opcional"}"></div>
+      <div><label>Estado físico</label><input id="f_condition" value="${esc(d.condition)}"></div>
+      ${!d.id?`
+        <div><label>Precio del arreglo ($)</label><input id="f_price" type="number" min="0" step="1" value="0"></div>
+        <div><label>Abono recibido ($)</label><input id="f_deposit" type="number" min="0" step="1" value="0"></div>
+        <div class="full"><p class="muted">El saldo pendiente se calcula con el precio menos el abono.</p></div>
+      `:""}
+      <div class="full"><label>Trabajo / falla solicitada</label><textarea id="f_work">${esc(d.work)}</textarea></div>
+      <div class="full"><label>Observaciones de recepción</label><textarea id="f_obs">${esc(d.obs)}</textarea></div>
+    </div>
+    <div class="actions">
+      <button onclick="saveDevice('${d.id||""}')">Guardar</button>
+      <button class="ghost" onclick="devicesView()">Cancelar</button>
+    </div>
+  </div>`;
+}
 <div><label>Cliente</label><input id="f_name" value="${esc(d.customer_name)}"></div><div><label>Teléfono</label><input id="f_phone" value="${esc(d.customer_phone)}"></div>
 <div><label>Marca / modelo</label><input id="f_model" value="${esc(d.model)}"></div><div><label>IMEI / serial</label><input id="f_imei" value="${esc(d.imei)}"></div>
 <div><label>Color</label><input id="f_color" value="${esc(d.color)}"></div><div><label>Tipo de acceso</label><select id="f_lock">${["Ninguno","PIN","Contraseña","Patrón","Huella","Rostro","Otro"].map(x=>`<option ${d.lock_type===x?"selected":""}>${x}</option>`).join("")}</select></div>
@@ -77,8 +104,106 @@ function deviceForm(d={}){return `<div class="card"><h2>${d.id?"Editar":"Recibir
 <div class="full"><label>Trabajo / falla solicitada</label><textarea id="f_work">${esc(d.work)}</textarea></div><div class="full"><label>Observaciones de recepción</label><textarea id="f_obs">${esc(d.obs)}</textarea></div></div>
 <div class="actions"><button onclick="saveDevice('${d.id||""}')">Guardar</button><button class="ghost" onclick="devicesView()">Cancelar</button></div></div>`}
 function newDevice(){state.tab="equipos";$("main").innerHTML=deviceForm();window.scrollTo(0,0)}
-async function saveDevice(id){const old=state.devices.find(x=>x.id===id);const d={id:id||crypto.randomUUID(),user_id:state.session.user.id,customer_name:$("f_name").value.trim(),customer_phone:$("f_phone").value.trim(),model:$("f_model").value.trim(),imei:$("f_imei").value.trim(),color:$("f_color").value.trim(),lock_type:$("f_lock").value,condition:$("f_condition").value.trim(),work:$("f_work").value.trim(),obs:$("f_obs").value.trim(),received_at:old?.received_at||new Date().toISOString(),updated_at:new Date().toISOString()};
-if(!d.customer_name||!d.model){toast("Cliente y modelo son obligatorios",true);return}
+async function saveDevice(id){
+  const old=state.devices.find(x=>x.id===id);
+  const priceInput=$("f_price");
+  const depositInput=$("f_deposit");
+  const total=priceInput?Number(priceInput.value||0):0;
+  const deposit=depositInput?Number(depositInput.value||0):0;
+
+  if(!id && (total<0 || deposit<0 || deposit>total)){
+    toast("Revisa el precio y el abono: el abono no puede superar el precio",true);
+    return;
+  }
+
+  const d={
+    id:id||crypto.randomUUID(),
+    user_id:state.session.user.id,
+    customer_name:$("f_name").value.trim(),
+    customer_phone:$("f_phone").value.trim(),
+    model:$("f_model").value.trim(),
+    imei:$("f_imei").value.trim(),
+    color:$("f_color").value.trim(),
+    lock_type:$("f_lock").value,
+    condition:$("f_condition").value.trim(),
+    work:$("f_work").value.trim(),
+    obs:$("f_obs").value.trim(),
+    received_at:old?.received_at||new Date().toISOString(),
+    updated_at:new Date().toISOString()
+  };
+
+  if(!d.customer_name||!d.model){
+    toast("Cliente y modelo son obligatorios",true);
+    return;
+  }
+
+  const secret=$("f_secret").value;
+  if(secret){
+    d.lock_secret_ciphertext=await encryptSecret(secret);
+  }else if(old){
+    d.lock_secret_ciphertext=old.lock_secret_ciphertext||null;
+  }
+
+  const {error}=await sb.from("devices").upsert(d);
+  if(error){
+    toast(error.message,true);
+    return;
+  }
+
+  if(!id){
+    const order={
+      user_id:state.session.user.id,
+      device_id:d.id,
+      work:d.work,
+      status:"Recibido",
+      total,
+      deposit,
+      notes:d.obs,
+      received_at:d.received_at,
+      updated_at:new Date().toISOString()
+    };
+
+    const {data:createdOrder,error:orderError}=await sb
+      .from("orders").insert(order).select().single();
+
+    if(orderError){
+      await sb.from("devices").delete().eq("id",d.id);
+      toast("No se pudo crear la orden: "+orderError.message,true);
+      return;
+    }
+
+    if(deposit>0){
+      const movement={
+        user_id:state.session.user.id,
+        type:"income",
+        value:deposit,
+        method:"",
+        concept:`Abono reparación - ${d.customer_name} - ${d.model}`,
+        created_at:new Date().toISOString()
+      };
+
+      const {error:cashError}=await sb.from("cash_entries").insert(movement);
+
+      if(cashError){
+        state.devices=[...state.devices.filter(x=>x.id!==d.id),d];
+        state.orders=[...state.orders.filter(x=>x.id!==createdOrder.id),createdOrder];
+        saveCache();
+        toast("Equipo y orden guardados, pero falló el ingreso en Caja: "+cashError.message,true);
+        devicesView();
+        return;
+      }
+
+      state.cash.unshift(movement);
+    }
+
+    state.orders=[...state.orders.filter(x=>x.id!==createdOrder.id),createdOrder];
+  }
+
+  state.devices=[...state.devices.filter(x=>x.id!==d.id),d];
+  saveCache();
+  toast(id?"Equipo actualizado":"Equipo y orden guardados");
+  devicesView();
+}
 const secret=$("f_secret").value;if(secret){d.lock_secret_ciphertext=await encryptSecret(secret)}else if(old)d.lock_secret_ciphertext=old.lock_secret_ciphertext||null;
 const {error}=await sb.from("devices").upsert(d);if(error){toast(error.message,true);return}state.devices=[...state.devices.filter(x=>x.id!==d.id),d];saveCache();toast("Equipo guardado");devicesView()}
 function editDevice(id){state.tab="equipos";$("main").innerHTML=deviceForm(state.devices.find(x=>x.id===id)||{})}
