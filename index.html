@@ -135,8 +135,68 @@ function orderForm(o={}){return `<div class="card"><h2>${o.id?"Editar orden":"Nu
 function newOrder(){if(!state.devices.length){toast("Primero recibe un equipo",true);newDevice();return}state.tab="ordenes";$("main").innerHTML=orderForm()}
 function editOrder(id){state.tab="ordenes";$("main").innerHTML=orderForm(state.orders.find(x=>x.id===id)||{})}
 async function saveOrder(id){const old=state.orders.find(x=>x.id===id),total=Number($("o_total").value||0),dep=Number($("o_deposit").value||0);if(dep>total){toast("El abono no puede superar el total",true);return}const o={id:id||crypto.randomUUID(),user_id:state.session.user.id,device_id:$("o_device").value,work:$("o_work").value,status:$("o_status").value,total,deposit:dep,notes:$("o_notes").value,received_at:old?.received_at||new Date().toISOString(),updated_at:new Date().toISOString()};const {data,error}=await sb.from("orders").upsert(o).select().single();if(error){toast(error.message,true);return}state.orders=[...state.orders.filter(x=>x.id!==o.id),data];saveCache();toast("Orden guardada");ordersView()}
-function cashView(){const inc=state.cash.filter(x=>x.type==="income").reduce((a,x)=>a+Number(x.value),0),exp=state.cash.filter(x=>x.type==="expense").reduce((a,x)=>a+Number(x.value),0);$("main").innerHTML=`<div class="card"><div style="display:flex;align-items:center"><h2>Caja</h2><div class="right actions"><button onclick="newCash('income')">+ Ingreso</button><button class="danger" onclick="newCash('expense')">+ Gasto</button></div></div><p>Ingresos: <b>${money(inc)}</b> · Gastos: <b>${money(exp)}</b> · Balance: <b>${money(inc-exp)}</b></p></div><div class="card scroll"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Valor</th><th>Método</th><th>Concepto</th></tr></thead><tbody>${state.cash.map(x=>`<tr><td>${new Date(x.created_at).toLocaleString("es-CO")}</td><td>${x.type==="income"?"Ingreso":"Gasto"}</td><td>${money(x.value)}</td><td>${esc(x.method)}</td><td>${esc(x.concept)}</td></tr>`).join("")||"<tr><td colspan=5>No hay movimientos.</td></tr>"}</tbody></table></div>`}
-async function newCash(type){const value=prompt(type==="income"?"Valor del ingreso":"Valor del gasto");if(value===null)return;const n=Number(value);if(!(n>0)){toast("Valor inválido",true);return}const concept=prompt("Concepto")||"",method=prompt("Método de pago")||"";const x={id:crypto.randomUUID(),user_id:state.session.user.id,type,value:n,method,concept,created_at:new Date().toISOString()};const {error}=await sb.from("cash_entries").insert(x);if(error){toast(error.message,true);return}state.cash.unshift(x);saveCache();cashView()}
+function cashView(){
+  const inc=state.cash.filter(x=>x.type==="income").reduce((a,x)=>a+Number(x.value),0);
+  const exp=state.cash.filter(x=>x.type==="expense").reduce((a,x)=>a+Number(x.value),0);
+
+  $("main").innerHTML=`
+    <div class="card">
+      <div style="display:flex;align-items:center">
+        <h2>Caja</h2>
+        <div class="right actions">
+          <button onclick="newCash('income')">+ Ingreso</button>
+          <button class="danger" onclick="newCash('expense')">+ Gasto</button>
+        </div>
+      </div>
+      <p>Ingresos: <b>${money(inc)}</b> · Gastos: <b>${money(exp)}</b> · Balance: <b>${money(inc-exp)}</b></p>
+    </div>
+    <div class="card scroll">
+      <table>
+        <thead>
+          <tr><th>Fecha</th><th>Tipo</th><th>Valor</th><th>Método</th><th>Concepto</th><th>Acción</th></tr>
+        </thead>
+        <tbody>
+          ${state.cash.map(x=>`
+            <tr>
+              <td>${new Date(x.created_at).toLocaleString("es-CO")}</td>
+              <td>${x.type==="income"?"Ingreso":"Gasto"}</td>
+              <td>${money(x.value)}</td>
+              <td>${esc(x.method)}</td>
+              <td>${esc(x.concept)}</td>
+              <td><button class="danger" onclick="deleteCash('${x.id}')">Eliminar</button></td>
+            </tr>
+          `).join("")||"<tr><td colspan=6>No hay movimientos.</td></tr>"}
+        </tbody>
+      </table>
+    </div>`;
+}
+async function deleteCash(id){
+  const movimiento=state.cash.find(x=>x.id===id);
+  if(!movimiento){
+    toast("No se encontró el movimiento",true);
+    return;
+  }
+
+  if(!confirm("¿Eliminar este movimiento de Caja? Esta acción cambiará el balance. Continúa solo si el registro es incorrecto o de prueba.")){
+    return;
+  }
+
+  const {error}=await sb
+    .from("cash_entries")
+    .delete()
+    .eq("id",id)
+    .eq("user_id",state.session.user.id);
+
+  if(error){
+    toast("No se pudo eliminar: "+error.message,true);
+    return;
+  }
+
+  state.cash=state.cash.filter(x=>x.id!==id);
+  saveCache();
+  cashView();
+  toast("Movimiento eliminado");
+}
 function configView(){const p=state.profile||{};$("main").innerHTML=`<div class="two"><div class="card"><h2>Perfil del negocio</h2><div style="display:flex;align-items:center;gap:14px;margin-bottom:14px"><div class="logo" style="width:72px;height:72px;border-radius:18px;font-size:22px;overflow:hidden">${p.logo_url||p.logo_path?`<img src="${esc(p.logo_url||p.logo_path)}" style="width:72px;height:72px;object-fit:cover">`:'AG'}</div><div><label>Foto / logo de perfil</label><input id="p_logo_file" type="file" accept="image/*" onchange="previewLogo()"><p class="small muted">Elige una foto desde el celular o computador.</p></div></div><div class="formgrid"><div class="full"><label>Nombre</label><input id="p_name" value="${esc(p.shop_name||"AG_CELL Servicio Técnico")}"></div><div class="full"><label>Descripción</label><input id="p_sub" value="${esc(p.subtitle||"Gestión de reparación y servicio")}"></div><div><label>Teléfono</label><input id="p_phone" value="${esc(p.phone||"")}"></div><div><label>Correo</label><input id="p_email" value="${esc(p.email||"")}"></div><div class="full"><label>Dirección</label><input id="p_address" value="${esc(p.address||"")}"></div></div><div class="actions"><button onclick="saveProfile()">Guardar perfil</button><button class="ghost" onclick="installAGCell()">📲 Instalar AG_CELL</button></div></div><div class="card"><h2>Seguridad</h2><p class="small muted">El PIN bloquea la aplicación en este dispositivo. Los accesos de equipos se cifran antes de enviarse a Supabase usando la contraseña de tu cuenta.</p><button onclick="changePin()">Cambiar PIN</button><button class="ghost" onclick="sessionStorage.removeItem('agcell_unlocked');render()">Bloquear ahora</button></div></div>`}
 async function saveProfile(){const p={id:state.profile?.id||crypto.randomUUID(),user_id:state.session.user.id,shop_name:$("p_name").value.trim()||"AG_CELL Servicio Técnico",subtitle:$("p_sub").value.trim(),phone:$("p_phone").value.trim(),email:$("p_email").value.trim(),address:$("p_address").value.trim(),logo_path:state.profile?.logo_path||null,updated_at:new Date().toISOString()};const file=$("p_logo_file")?.files?.[0];if(file){if(file.size>3*1024*1024){toast("La foto supera 3 MB",true);return}const ext=(file.name.split(".").pop()||"jpg").toLowerCase();const path=`${state.session.user.id}/profile/logo-${crypto.randomUUID()}.${ext}`;const {error:upErr}=await sb.storage.from("agcell-photos").upload(path,file,{upsert:false});if(upErr){toast(upErr.message,true);return}p.logo_path=path}const {data,error}=await sb.from("business_profiles").upsert(p).select().single();if(error){toast(error.message,true);return}state.profile=data;state.profile.logo_url=null;if(data.logo_path){const signed=await sb.storage.from("agcell-photos").createSignedUrl(data.logo_path,60*60*24*7);if(signed.data?.signedUrl)state.profile.logo_url=signed.data.signedUrl}saveCache();renderApp();toast("Perfil guardado")}
 async function installAGCell(){if(deferredInstallPrompt){deferredInstallPrompt.prompt();const result=await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;return}toast("Si tu navegador no muestra la instalación automática, usa el menú del navegador y elige 'Instalar aplicación' o 'Agregar a pantalla de inicio'.")}
