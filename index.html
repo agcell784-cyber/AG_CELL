@@ -73,36 +73,7 @@ function deviceForm(d={}){
   return `<div class="card">
     <h2>${d.id?"Editar":"Recibir"} equipo</h2>
     <div class="formgrid">
-      <div><label>Cliente</label><input id="f_name" value="${esc(d.customer_name)}"></div>
-      <div><label>Teléfono</label><input id="f_phone" value="${esc(d.customer_phone)}"></div>
-      <div><label>Marca / modelo</label><input id="f_model" value="${esc(d.model)}"></div>
-      <div><label>IMEI / serial</label><input id="f_imei" value="${esc(d.imei)}"></div>
-      <div><label>Color</label><input id="f_color" value="${esc(d.color)}"></div>
-      <div><label>Tipo de acceso</label>
-        <select id="f_lock">${["Ninguno","PIN","Contraseña","Patrón","Huella","Rostro","Otro"].map(x=>`<option ${d.lock_type===x?"selected":""}>${x}</option>`).join("")}</select>
-      </div>
-      <div><label>Acceso del equipo</label><input id="f_secret" type="password" placeholder="${d.id?"Dejar vacío para conservar":"Opcional"}"></div>
-      <div><label>Estado físico</label><input id="f_condition" value="${esc(d.condition)}"></div>
-      ${!d.id?`
-        <div><label>Precio del arreglo ($)</label><input id="f_price" type="number" min="0" step="1" value="0"></div>
-        <div><label>Abono recibido ($)</label><input id="f_deposit" type="number" min="0" step="1" value="0"></div>
-        <div class="full"><p class="muted">El saldo pendiente se calcula con el precio menos el abono.</p></div>
-      `:""}
-      <div class="full"><label>Trabajo / falla solicitada</label><textarea id="f_work">${esc(d.work)}</textarea></div>
-      <div class="full"><label>Observaciones de recepción</label><textarea id="f_obs">${esc(d.obs)}</textarea></div>
-    </div>
-    <div class="actions">
-      <button onclick="saveDevice('${d.id||""}')">Guardar</button>
-      <button class="ghost" onclick="devicesView()">Cancelar</button>
-    </div>
-  </div>`;
-}
-<div><label>Cliente</label><input id="f_name" value="${esc(d.customer_name)}"></div><div><label>Teléfono</label><input id="f_phone" value="${esc(d.customer_phone)}"></div>
-<div><label>Marca / modelo</label><input id="f_model" value="${esc(d.model)}"></div><div><label>IMEI / serial</label><input id="f_imei" value="${esc(d.imei)}"></div>
-<div><label>Color</label><input id="f_color" value="${esc(d.color)}"></div><div><label>Tipo de acceso</label><select id="f_lock">${["Ninguno","PIN","Contraseña","Patrón","Huella","Rostro","Otro"].map(x=>`<option ${d.lock_type===x?"selected":""}>${x}</option>`).join("")}</select></div>
-<div><label>Acceso del equipo</label><input id="f_secret" type="password" placeholder="${d.id?"Dejar vacío para conservar":"Opcional"}"></div><div><label>Estado físico</label><input id="f_condition" value="${esc(d.condition)}"></div>
-<div class="full"><label>Trabajo / falla solicitada</label><textarea id="f_work">${esc(d.work)}</textarea></div><div class="full"><label>Observaciones de recepción</label><textarea id="f_obs">${esc(d.obs)}</textarea></div></div>
-<div class="actions"><button onclick="saveDevice('${d.id||""}')">Guardar</button><button class="ghost" onclick="devicesView()">Cancelar</button></div></div>`}
+    
 function newDevice(){state.tab="equipos";$("main").innerHTML=deviceForm();window.scrollTo(0,0)}
 async function saveDevice(id){
   const old=state.devices.find(x=>x.id===id);
