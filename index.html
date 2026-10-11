@@ -175,10 +175,35 @@ async function saveDevice(id){
   toast(id?"Equipo actualizado":"Equipo y orden guardados");
   devicesView();
 }
-const secret=$("f_secret").value;if(secret){d.lock_secret_ciphertext=await encryptSecret(secret)}else if(old)d.lock_secret_ciphertext=old.lock_secret_ciphertext||null;
-const {error}=await sb.from("devices").upsert(d);if(error){toast(error.message,true);return}state.devices=[...state.devices.filter(x=>x.id!==d.id),d];saveCache();toast("Equipo guardado");devicesView()}
-function editDevice(id){state.tab="equipos";$("main").innerHTML=deviceForm(state.devices.find(x=>x.id===id)||{})}
 
+const {error}=await sb.from("devices").upsert(d);if(error){toast(error.message,true);return}state.devices=[...state.devices.filter(x=>x.id!==d.id),d];saveCache();toast("Equipo guardado");devicesView()}
+function deviceForm(d={}){
+  return `<div class="card">
+    <h2>${d.id?"Editar":"Recibir"} equipo</h2>
+    <div class="formgrid">
+      <div><label>Nombre del cliente *</label><input id="f_name" value="${esc(d.customer_name||"")}" required></div>
+      <div><label>Teléfono</label><input id="f_phone" value="${esc(d.customer_phone||"")}"></div>
+      <div><label>Modelo del equipo *</label><input id="f_model" value="${esc(d.model||"")}" required></div>
+      <div><label>IMEI</label><input id="f_imei" value="${esc(d.imei||"")}"></div>
+      <div><label>Color</label><input id="f_color" value="${esc(d.color||"")}"></div>
+      <div><label>Tipo de bloqueo</label>
+        <select id="f_lock">
+          ${["Ninguno","PIN","Patrón","Contraseña","Cuenta Google","Cuenta Apple"].map(x=>`<option ${d.lock_type===x?"selected":""}>${x}</option>`).join("")}
+        </select>
+      </div>
+      <div><label>Estado físico</label><textarea id="f_condition">${esc(d.condition||"")}</textarea></div>
+      <div><label>Trabajo solicitado</label><textarea id="f_work">${esc(d.work||"")}</textarea></div>
+      <div class="full"><label>Observaciones</label><textarea id="f_obs">${esc(d.obs||"")}</textarea></div>
+      <div class="full"><label>PIN o contraseña del equipo (opcional)</label><input id="f_secret" type="password" autocomplete="off"></div>
+      <div><label>Precio del trabajo (COP)</label><input id="f_price" type="number" min="0" value="${d.total??0}"></div>
+      <div><label>Abono recibido (COP)</label><input id="f_deposit" type="number" min="0" value="${d.deposit??0}"></div>
+    </div>
+    <div class="actions">
+      <button onclick="saveDevice('${d.id||""}')">Guardar equipo</button>
+      <button class="ghost" onclick="devicesView()">Cancelar</button>
+    </div>
+  </div>`;
+}
 async function deleteDevice(id){
   const device=state.devices.find(x=>x.id===id);
   if(!device){
