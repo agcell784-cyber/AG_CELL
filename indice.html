@@ -101,13 +101,13 @@ function deviceForm(d={}){
     
 function newDevice() {
   state.tab = "equipos";
-  \$("main").innerHTML = deviceForm();
+  $("main").innerHTML = deviceForm();
   window.scrollTo(0, 0);
 }
 async function saveDevice(id) { 
   const old = state.devices.find(x => x.id === id); 
-  const priceInput = \$("f_price"); 
-  const depositInput = \$("f_deposit"); 
+  const priceInput = $("f_price");
+  const depositInput = $("f_deposit");
   const total = priceInput ? Number(priceInput.value || 0) : 0; 
   const deposit = depositInput ? Number(depositInput.value || 0) : 0; 
   if (total < 0 || deposit < 0 || deposit > total) { 
