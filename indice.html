@@ -51,7 +51,7 @@ function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&l
 function saveCache(){localStorage.setItem(STORE,JSON.stringify({profile:state.profile,devices:state.devices,orders:state.orders,cash:state.cash,photos:state.photos}))}
 function loadCache(){try{const x=JSON.parse(localStorage.getItem(STORE)||"{}");Object.assign(state,{profile:x.profile||null,devices:x.devices||[],orders:x.orders||[],cash:x.cash||[],photos:x.photos||[]})}catch{}}
 function pinSet(){return !!localStorage.getItem(PINKEY)}
-function validPin(p){return /^\\d{4,8}$/.test(p)}
+function validPin(p){return /^\d{4,8}$/.test(p)}
 async function hashPin(p){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(p));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
 async function unlockPin(){let p=prompt("PIN de AG_CELL:");if(!p)return false;const h=await hashPin(p);if(h!==localStorage.getItem(PINKEY)){toast("PIN incorrecto",true);return false}sessionStorage.setItem("agcell_unlocked","1");return true}
 async function ensurePin(){if(!pinSet()){let p=prompt("Crea tu PIN de AG_CELL (4 a 8 dígitos):","1234");if(!validPin(p||"")){toast("PIN inválido",true);return false}localStorage.setItem(PINKEY,await hashPin(p));sessionStorage.setItem("agcell_unlocked","1");toast("PIN creado")}return true}
