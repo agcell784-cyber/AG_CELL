@@ -162,12 +162,7 @@ async function saveDevice(id) {
       updated_at:new Date().toISOString()
     };
 
-    const {data:createdOrder,error:orderError}=await sb
-      .from("orders").insert(order).select().single();
-
-    if(orderError){
-      await sb.from("devices").delete().eq("id",d.id);
-      toast("No se pudo crear la orden: "+orderError.message,true);
+    
       return;
     }
 
