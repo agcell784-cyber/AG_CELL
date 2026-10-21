@@ -9,9 +9,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="AG_CELL">
-<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
-<title>AG_CELL Servicio Técnico</title>
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
 :root{--bg:#f4f6f8;--card:#fff;--ink:#111827;--muted:#6b7280;--line:#e5e7eb;--accent:#111827;--good:#047857;--bad:#b91c1c;--warn:#b45309}
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--ink)}
@@ -57,7 +56,7 @@ async function hashPin(p){const b=await crypto.subtle.digest("SHA-256",new TextE
 async function unlockPin(){let p=prompt("PIN de AG_CELL:");if(!p)return false;const h=await hashPin(p);if(h!==localStorage.getItem(PINKEY)){toast("PIN incorrecto",true);return false}sessionStorage.setItem("agcell_unlocked","1");return true}
 async function ensurePin(){if(!pinSet()){let p=prompt("Crea tu PIN de AG_CELL (4 a 8 dígitos):","1234");if(!validPin(p||"")){toast("PIN inválido",true);return false}localStorage.setItem(PINKEY,await hashPin(p));sessionStorage.setItem("agcell_unlocked","1");toast("PIN creado")}return true}
 function locked(){return pinSet()&&!sessionStorage.getItem("agcell_unlocked")}
-function render(){document.body.innerHTML=document.body.innerHTML; if(locked()){renderLogin();return} renderApp()}
+function render(){if(locked()){renderLogin();return} renderApp()}
 function renderLogin(){document.getElementById("app").innerHTML=`<div class="login"><div class="box card"><h1>AG_CELL</h1><p class="muted">Servicio Técnico</p><label>PIN</label><input id="pin" type="password" inputmode="numeric" maxlength="8" placeholder="••••"><div class="actions"><button onclick="doUnlock()">Entrar</button></div><hr><p class="small muted">El PIN es un bloqueo local adicional. Tus datos de nube usan la cuenta de Supabase.</p></div></div>`}
 async function doUnlock(){const p=$("pin").value;const h=await hashPin(p);if(h===localStorage.getItem(PINKEY)){sessionStorage.setItem("agcell_unlocked","1");render()}else toast("PIN incorrecto",true)}
 function renderApp(){const p=state.profile||{};document.getElementById("app").innerHTML=`
