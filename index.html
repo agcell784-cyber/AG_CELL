@@ -103,101 +103,120 @@ function newDevice() {
   $("main").innerHTML = deviceForm();
   window.scrollTo(0, 0);
 }
-async function saveDevice(id) { 
-  const old = state.devices.find(x => x.id === id); 
+
+async function saveDevice(id) {
+  const old = state.devices.find(x => x.id === id);
   const priceInput = $("f_price");
   const depositInput = $("f_deposit");
-  const total = priceInput ? Number(priceInput.value || 0) : 0; 
-  const deposit = depositInput ? Number(depositInput.value || 0) : 0; 
-  if (total < 0 || deposit < 0 || deposit > total) { 
-    toast("Revisa el precio y el abono: el abono no puede superar el precio", true); 
-    return; 
+  const total = priceInput ? Number(priceInput.value || 0) : 0;
+  const deposit = depositInput ? Number(depositInput.value || 0) : 0;
+
+  if (total < 0 || deposit < 0 || deposit > total) {
+    toast("Revisa el precio y el abono: el abono no puede superar el precio", true);
+    return;
   }
 
-
-  const d={
-    id:id||crypto.randomUUID(),
-    user_id:state.session.user.id,
-    customer_name:$("f_name").value.trim(),
-    customer_phone:$("f_phone").value.trim(),
-    model:$("f_model").value.trim(),
-    imei:$("f_imei").value.trim(),
-    color:$("f_color").value.trim(),
-    lock_type:$("f_lock").value,
-    condition:$("f_condition").value.trim(),
-    work:$("f_work").value.trim(),
-    obs:$("f_obs").value.trim(),
-    received_at:old?.received_at||new Date().toISOString(),
-    updated_at:new Date().toISOString()
+  const d = {
+    id: id || crypto.randomUUID(),
+    user_id: state.session.user.id,
+    customer_name: $("f_name").value.trim(),
+    customer_phone: $("f_phone").value.trim(),
+    model: $("f_model").value.trim(),
+    imei: $("f_imei").value.trim(),
+    color: $("f_color").value.trim(),
+    lock_type: $("f_lock").value,
+    condition: $("f_condition").value.trim(),
+    work: $("f_work").value.trim(),
+    obs: $("f_obs").value.trim(),
+    total,
+    deposit,
+    received_at: old?.received_at || new Date().toISOString(),
+    updated_at: new Date().toISOString()
   };
 
-  if(!d.customer_name||!d.model){
-    toast("Cliente y modelo son obligatorios",true);
+  if (!d.customer_name || !d.model) {
+    toast("Cliente y modelo son obligatorios", true);
     return;
   }
 
-  const secret=$("f_secret").value;
-  if(secret){
-    d.lock_secret_ciphertext=await encryptSecret(secret);
-  }else if(old){
-    d.lock_secret_ciphertext=old.lock_secret_ciphertext||null;
+  const secret = $("f_secret").value;
+
+  if (secret) {
+    d.lock_secret_ciphertext = await encryptSecret(secret);
+  } else if (old) {
+    d.lock_secret_ciphertext = old.lock_secret_ciphertext || null;
   }
 
-  const {error}=await sb.from("devices").upsert(d);
-  if(error){
-    toast(error.message,true);
+  const { error } = await sb.from("devices").upsert(d);
+
+  if (error) {
+    toast(error.message, true);
     return;
   }
 
-  if(!id){
-    const order={
-      user_id:state.session.user.id,
-      device_id:d.id,
-      work:d.work,
-      status:"Recibido",
+  state.devices = [
+    ...state.devices.filter(x => x.id !== d.id),
+    d
+  ];
+
+  if (!id) {
+    const order = {
+      id: crypto.randomUUID(),
+      user_id: state.session.user.id,
+      device_id: d.id,
+      work: d.work,
+      status: "Recibido",
       total,
       deposit,
-      notes:d.obs,
-      received_at:d.received_at,
-      updated_at:new Date().toISOString()
+      notes: d.obs,
+      received_at: d.received_at,
+      updated_at: new Date().toISOString()
     };
 
-    
+    const { data: createdOrder, error: orderError } =
+      await sb.from("orders").insert(order).select().single();
+
+    if (orderError) {
+      saveCache();
+      toast("Equipo guardado, pero falló la orden: " + orderError.message, true);
+      devicesView();
       return;
     }
 
-    if(deposit>0){
-      const movement={
-        user_id:state.session.user.id,
-        type:"income",
-        value:deposit,
-        method:"",
-        concept:`Abono reparación - ${d.customer_name} - ${d.model}`,
-        created_at:new Date().toISOString()
+    state.orders = [
+      ...state.orders.filter(x => x.id !== createdOrder.id),
+      createdOrder
+    ];
+
+    if (deposit > 0) {
+      const movement = {
+        user_id: state.session.user.id,
+        type: "income",
+        value: deposit,
+        method: "",
+        concept: `Abono reparación - ${d.customer_name} - ${d.model}`,
+        created_at: new Date().toISOString()
       };
 
-      const {error:cashError}=await sb.from("cash_entries").insert(movement);
+      const { data: savedMovement, error: cashError } =
+        await sb.from("cash_entries").insert(movement).select().single();
 
-      if(cashError){
-        state.devices=[...state.devices.filter(x=>x.id!==d.id),d];
-        state.orders=[...state.orders.filter(x=>x.id!==createdOrder.id),createdOrder];
+      if (cashError) {
         saveCache();
-        toast("Equipo y orden guardados, pero falló el ingreso en Caja: "+cashError.message,true);
+        toast("Equipo y orden guardados, pero falló el ingreso en Caja: " + cashError.message, true);
         devicesView();
         return;
       }
 
-      state.cash.unshift(movement);
+      state.cash.unshift(savedMovement);
     }
-
-    state.orders=[...state.orders.filter(x=>x.id!==createdOrder.id),createdOrder];
   }
 
-  state.devices=[...state.devices.filter(x=>x.id!==d.id),d];
   saveCache();
-  toast(id?"Equipo actualizado":"Equipo y orden guardados");
+  toast(id ? "Equipo actualizado" : "Equipo y orden guardados");
   devicesView();
 }
+
 
 async function deleteDevice(id){
   const device=state.devices.find(x=>x.id===id);
