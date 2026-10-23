@@ -317,7 +317,99 @@ function ordersView(){const rows=state.orders.map(o=>{const d=state.devices.find
 function orderForm(o={}){return `<div class="card"><h2>${o.id?"Editar orden":"Nueva orden"}</h2><label>Equipo</label><select id="o_device">${state.devices.map(d=>`<option value="${d.id}" ${o.device_id===d.id?"selected":""}>${esc(d.customer_name)} — ${esc(d.model)} ${d.imei?"· "+esc(d.imei):""}</option>`).join("")}</select><div class="formgrid"><div><label>Trabajo</label><textarea id="o_work">${esc(o.work)}</textarea></div><div><label>Estado</label><select id="o_status">${["Recibido","En reparación","Listo","Entregado","Cancelado"].map(x=>`<option ${o.status===x?"selected":""}>${x}</option>`).join("")}</select></div><div><label>Total</label><input id="o_total" type="number" min="0" value="${o.total||0}"></div><div><label>Abono</label><input id="o_deposit" type="number" min="0" value="${o.deposit||0}"></div><div class="full"><label>Notas</label><textarea id="o_notes">${esc(o.notes)}</textarea></div></div><div class="actions"><button onclick="saveOrder('${o.id||""}')">Guardar</button><button class="ghost" onclick="ordersView()">Cancelar</button></div></div>`}
 function newOrder(){if(!state.devices.length){toast("Primero recibe un equipo",true);newDevice();return}state.tab="ordenes";$("main").innerHTML=orderForm()}
 function editOrder(id){state.tab="ordenes";$("main").innerHTML=orderForm(state.orders.find(x=>x.id===id)||{})}
-async function saveOrder(id){const old=state.orders.find(x=>x.id===id),total=Number($("o_total").value||0),dep=Number($("o_deposit").value||0);if(dep>total){toast("El abono no puede superar el total",true);return}const o={id:id||crypto.randomUUID(),user_id:state.session.user.id,device_id:$("o_device").value,work:$("o_work").value,status:$("o_status").value,total,deposit:dep,notes:$("o_notes").value,received_at:old?.received_at||new Date().toISOString(),updated_at:new Date().toISOString()};const {data,error}=await sb.from("orders").upsert(o).select().single();if(error){toast(error.message,true);return}state.orders=[...state.orders.filter(x=>x.id!==o.id),data];saveCache();toast("Orden guardada");ordersView()}
+
+async function saveOrder(id) {
+  const old = state.orders.find(x => x.id === id);
+  const total = Number($("o_total").value || 0);
+  const dep = Number($("o_deposit").value || 0);
+
+  if (total < 0 || dep < 0 || dep > total) {
+    toast("El abono no puede superar el total", true);
+    return;
+  }
+
+  const deviceId = $("o_device").value;
+  const device = state.devices.find(x => x.id === deviceId);
+
+  if (!device) {
+    toast("No se encontró el equipo de esta orden", true);
+    return;
+  }
+
+  const previousDeposit = Number(old?.deposit || 0);
+  const difference = dep - previousDeposit;
+
+  const o = {
+    id: id || crypto.randomUUID(),
+    user_id: state.session.user.id,
+    device_id: deviceId,
+    work: $("o_work").value,
+    status: $("o_status").value,
+    total,
+    deposit: dep,
+    notes: $("o_notes").value,
+    received_at: old?.received_at || new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+
+  const { data, error } = await sb.from("orders").upsert(o).select().single();
+
+  if (error) {
+    toast(error.message, true);
+    return;
+  }
+
+  state.orders = [
+    ...state.orders.filter(x => x.id !== o.id),
+    data
+  ];
+
+  // Mantener actualizado el precio y el abono del equipo.
+  const { error: deviceError } = await sb.from("devices")
+    .update({ total, deposit: dep, updated_at: new Date().toISOString() })
+    .eq("id", deviceId)
+    .eq("user_id", state.session.user.id);
+
+  if (deviceError) {
+    saveCache();
+    toast("Orden guardada, pero no se pudo actualizar el equipo: " + deviceError.message, true);
+    ordersView();
+    return;
+  }
+
+  state.devices = state.devices.map(d =>
+    d.id === deviceId ? { ...d, total, deposit: dep } : d
+  );
+
+  // Registrar solamente la diferencia del abono, sin duplicar ingresos.
+  if (difference !== 0) {
+    const movement = {
+      user_id: state.session.user.id,
+      type: difference > 0 ? "income" : "expense",
+      value: Math.abs(difference),
+      method: "",
+      concept: `Ajuste de abono reparación - ${device.customer_name} - ${device.model}`,
+      device_id: deviceId,
+      created_at: new Date().toISOString()
+    };
+
+    const { data: savedMovement, error: cashError } =
+      await sb.from("cash_entries").insert(movement).select().single();
+
+    if (cashError) {
+      saveCache();
+      toast("Orden guardada, pero falló el movimiento de Caja: " + cashError.message, true);
+      ordersView();
+      return;
+    }
+
+    state.cash.unshift(savedMovement);
+  }
+
+  saveCache();
+  toast("Orden y Caja actualizadas");
+  ordersView();
+}
 
 function inventoryView(){
  const items=state.inventory||[];
