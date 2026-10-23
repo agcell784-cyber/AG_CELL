@@ -316,7 +316,61 @@ async function deriveKey(password){const base=await crypto.subtle.importKey("raw
 function ordersView(){const rows=state.orders.map(o=>{const d=state.devices.find(x=>x.id===o.device_id)||{};return `<tr><td>#${o.number||"—"}</td><td>${esc(d.customer_name||"—")}<br>${esc(d.model||"")}</td><td>${esc(o.status)}</td><td>${money(o.total)}</td><td>${money(o.deposit)}</td><td>${money(Number(o.total)-Number(o.deposit))}</td><td><button onclick="editOrder('${o.id}')">Editar</button> <button class="good" onclick="whatsAppCustomer('${o.device_id}','${o.status==="Listo"||o.status==="Entregado"?"listo":"recibido"}')">WhatsApp</button></td></tr>`}).join("");$("main").innerHTML=`<div class="card"><div style="display:flex;align-items:center"><h2>Órdenes</h2><button class="right" onclick="newOrder()">+ Nueva orden</button></div><div class="scroll"><table><thead><tr><th>N°</th><th>Equipo</th><th>Estado</th><th>Total</th><th>Abono</th><th>Saldo</th><th></th></tr></thead><tbody>${rows||"<tr><td colspan=7>No hay órdenes.</td></tr>"}</tbody></table></div></div>`}
 function orderForm(o={}){return `<div class="card"><h2>${o.id?"Editar orden":"Nueva orden"}</h2><label>Equipo</label><select id="o_device">${state.devices.map(d=>`<option value="${d.id}" ${o.device_id===d.id?"selected":""}>${esc(d.customer_name)} — ${esc(d.model)} ${d.imei?"· "+esc(d.imei):""}</option>`).join("")}</select><div class="formgrid"><div><label>Trabajo</label><textarea id="o_work">${esc(o.work)}</textarea></div><div><label>Estado</label><select id="o_status">${["Recibido","En reparación","Listo","Entregado","Cancelado"].map(x=>`<option ${o.status===x?"selected":""}>${x}</option>`).join("")}</select></div><div><label>Total</label><input id="o_total" type="number" min="0" value="${o.total||0}"></div><div><label>Abono</label><input id="o_deposit" type="number" min="0" value="${o.deposit||0}"></div><div class="full"><label>Notas</label><textarea id="o_notes">${esc(o.notes)}</textarea></div></div><div class="actions"><button onclick="saveOrder('${o.id||""}')">Guardar</button><button class="ghost" onclick="ordersView()">Cancelar</button></div></div>`}
 function newOrder(){if(!state.devices.length){toast("Primero recibe un equipo",true);newDevice();return}state.tab="ordenes";$("main").innerHTML=orderForm()}
-function editOrder(id){state.tab="ordenes";$("main").innerHTML=orderForm(state.orders.find(x=>x.id===id)||{})}
+function editOrder(id){state.tab="ordenes";$("main").innerHTML=orderForm
+function orderForm(o={}) {
+  const selectedDevice =
+    state.devices.find(d => d.id === o.device_id) || state.devices[0];
+
+  const accumulatedDeposit = Number(
+    o.deposit ?? selectedDevice?.deposit ?? 0
+  );
+
+  return `<div class="card">
+    <h2>${o.id ? "Editar orden" : "Nueva orden"}</h2>
+    <label>Equipo</label>
+    <select id="o_device">
+      ${state.devices.map(d => `<option value="${d.id}" ${o.device_id === d.id ? "selected" : ""}>
+        ${esc(d.customer_name)} — ${esc(d.model)} ${d.imei ? "· " + esc(d.imei) : ""}
+      </option>`).join("")}
+    </select>
+    <div class="formgrid">
+      <div>
+        <label>Trabajo</label>
+        <textarea id="o_work">${esc(o.work || selectedDevice?.work || "")}</textarea>
+      </div>
+      <div>
+        <label>Estado</label>
+        <select id="o_status">
+          ${["Recibido","En reparación","Listo","Entregado","Cancelado"].map(x =>
+            `<option ${((o.status || "Recibido") === x) ? "selected" : ""}>${x}</option>`
+          ).join("")}
+        </select>
+      </div>
+      <div>
+        <label>Total de la reparación (COP)</label>
+        <input id="o_total" type="number" min="0" value="${o.total ?? selectedDevice?.total ?? 0}">
+      </div>
+      <div>
+        <label>Abonos acumulados (COP)</label>
+        <input id="o_deposit" type="number" value="${accumulatedDeposit}" readonly>
+      </div>
+      <div class="full">
+        <label>Pago recibido AHORA (COP)</label>
+        <input id="o_payment_now" type="number" min="0" value="0">
+        <p class="small muted">Escribe solo el dinero que recibes en este momento. Si no recibes dinero, deja 0.</p>
+      </div>
+      <div class="full">
+        <label>Notas</label>
+        <textarea id="o_notes">${esc(o.notes || "")}</textarea>
+      </div>
+    </div>
+    <div class="actions">
+      <button onclick="saveOrder('${o.id || ""}')">Guardar</button>
+      <button class="ghost" onclick="ordersView()">Cancelar</button>
+    </div>
+  </div>`;
+}
+
 
 async function saveOrder(id) {
   const old = state.orders.find(x => x.id === id);
