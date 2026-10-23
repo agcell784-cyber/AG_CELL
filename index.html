@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#111827">
+<meta name="description" content="AG_CELL Servicio Técnico. La tecnología merece una segunda oportunidad.">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -39,17 +40,17 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:9px;bord
 <div id="toast" class="toast hidden"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const SUPABASE_URL="https://ddzluwdxhvtrvsbdysry.supabase.co";
-const SUPABASE_KEY="sb_publishable_QNVJ2PExnWq-JWF6SbmkaA_apPylkNc";
+const SUPABASE_URL="https://cqggmnbjueomoeulcpqx.supabase.co";
+const SUPABASE_KEY="sb_publishable_CIMwPIib12kCFjHhTyKotA_zQXVDakm";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-const STORE="agcell_v8_cache", PINKEY="agcell_v8_pin", ENC_SALT="agcell-v8-secret-v1";
-let state={tab:"inicio",profile:null,devices:[],orders:[],cash:[],photos:[],session:null,cryptoKey:null,cloud:true};
+const STORE="agcell_v9_cache", PINKEY="agcell_v9_pin", ENC_SALT="agcell-v9-secret-v1";
+let state={tab:"inicio",profile:null,devices:[],orders:[],cash:[],photos:[],inventory:[],session:null,cryptoKey:null,cloud:true};
 const $=id=>document.getElementById(id);
 function toast(s,err=false){const t=$("toast");t.textContent=s;t.className="toast";if(err)t.style.background="#b91c1c";else t.style.background="#111827";clearTimeout(window._tt);window._tt=setTimeout(()=>t.className="toast hidden",3000)}
 function money(n){return new Intl.NumberFormat("es-CO",{style:"currency",currency:"COP",maximumFractionDigits:0}).format(Number(n)||0)}
 function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
-function saveCache(){localStorage.setItem(STORE,JSON.stringify({profile:state.profile,devices:state.devices,orders:state.orders,cash:state.cash,photos:state.photos}))}
-function loadCache(){try{const x=JSON.parse(localStorage.getItem(STORE)||"{}");Object.assign(state,{profile:x.profile||null,devices:x.devices||[],orders:x.orders||[],cash:x.cash||[],photos:x.photos||[]})}catch{}}
+function saveCache(){localStorage.setItem(STORE,JSON.stringify({profile:state.profile,devices:state.devices,orders:state.orders,cash:state.cash,photos:state.photos,inventory:state.inventory||[]}))}
+function loadCache(){try{const x=JSON.parse(localStorage.getItem(STORE)||"{}");Object.assign(state,{profile:x.profile||null,devices:x.devices||[],orders:x.orders||[],cash:x.cash||[],photos:x.photos||[],inventory:x.inventory||[]})}catch{}}
 function pinSet(){return !!localStorage.getItem(PINKEY)}
 function validPin(p){return /^\d{4,8}$/.test(p)}
 async function hashPin(p){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(p));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
@@ -57,17 +58,17 @@ async function unlockPin(){let p=prompt("PIN de AG_CELL:");if(!p)return false;co
 async function ensurePin(){if(!pinSet()){let p=prompt("Crea tu PIN de AG_CELL (4 a 8 dígitos):","1234");if(!validPin(p||"")){toast("PIN inválido",true);return false}localStorage.setItem(PINKEY,await hashPin(p));sessionStorage.setItem("agcell_unlocked","1");toast("PIN creado")}return true}
 function locked(){return pinSet()&&!sessionStorage.getItem("agcell_unlocked")}
 function render(){if(locked()){renderLogin();return} renderApp()}
-function renderLogin(){document.getElementById("app").innerHTML=`<div class="login"><div class="box card"><h1>AG_CELL</h1><p class="muted">Servicio Técnico</p><label>PIN</label><input id="pin" type="password" inputmode="numeric" maxlength="8" placeholder="••••"><div class="actions"><button onclick="doUnlock()">Entrar</button></div><hr><p class="small muted">El PIN es un bloqueo local adicional. Tus datos de nube usan la cuenta de Supabase.</p></div></div>`}
+function renderLogin(){document.getElementById("app").innerHTML=`<div class="login"><div class="box card"><h1>AG_CELL</h1><p class="muted">Servicio Técnico</p><p><b>La tecnología merece una segunda oportunidad</b></p><label>PIN</label><input id="pin" type="password" inputmode="numeric" maxlength="8" placeholder="••••"><div class="actions"><button onclick="doUnlock()">Entrar</button></div><hr><p class="small muted">El PIN es un bloqueo local adicional. Tus datos de nube usan la cuenta de Supabase.</p></div></div>`}
 async function doUnlock(){const p=$("pin").value;const h=await hashPin(p);if(h===localStorage.getItem(PINKEY)){sessionStorage.setItem("agcell_unlocked","1");render()}else toast("PIN incorrecto",true)}
 function renderApp(){const p=state.profile||{};document.getElementById("app").innerHTML=`
-<header><div class="logo">${p.logo_url||p.logo_path?`<img src="${esc(p.logo_url||p.logo_path)}" style="width:44px;height:44px;border-radius:12px;object-fit:cover">`:"AG"}</div><div class="headtext"><b>${esc(p.shop_name||"AG_CELL Servicio Técnico")}</b><small>${esc(p.subtitle||"Gestión de reparación y servicio")}</small></div><button class="ghost" onclick="signOut()">Salir</button></header>
-<nav>${["inicio","equipos","ordenes","caja","config"].map(x=>`<button class="${state.tab===x?"active":""}" onclick="state.tab='${x}';renderApp()">${({inicio:"Inicio",equipos:"Equipos",ordenes:"Órdenes",caja:"Caja",config:"Configuración"})[x]}</button>`).join("")}</nav><main id="main"></main>`;
-if(state.tab==="inicio")home();if(state.tab==="equipos")devicesView();if(state.tab==="ordenes")ordersView();if(state.tab==="caja")cashView();if(state.tab==="config")configView()}
+<header><div class="logo">${p.logo_url||p.logo_path?`<img src="${esc(p.logo_url||p.logo_path)}" style="width:44px;height:44px;border-radius:12px;object-fit:cover">`:"AG"}</div><div class="headtext"><b>${esc(p.shop_name||"AG_CELL Servicio Técnico")}</b><small>${esc(p.subtitle||"La tecnología merece una segunda oportunidad")}</small></div><button class="ghost" onclick="signOut()">Salir</button></header>
+<nav>${["inicio","equipos","ordenes","inventario","caja","config"].map(x=>`<button class="${state.tab===x?"active":""}" onclick="state.tab='${x}';renderApp()">${({inicio:"Inicio",equipos:"Equipos",ordenes:"Órdenes",inventario:"Inventario",caja:"Caja",config:"Configuración"})[x]}</button>`).join("")}</nav><main id="main"></main>`;
+if(state.tab==="inicio")home();if(state.tab==="equipos")devicesView();if(state.tab==="ordenes")ordersView();if(state.tab==="inventario")inventoryView();if(state.tab==="caja")cashView();if(state.tab==="config")configView()}
 function home(){const inc=state.cash.filter(x=>x.type==="income").reduce((a,x)=>a+Number(x.value),0),exp=state.cash.filter(x=>x.type==="expense").reduce((a,x)=>a+Number(x.value),0),active=state.orders.filter(x=>!["Entregado","Cancelado"].includes(x.status)).length;
 $("main").innerHTML=`<h2>Panel</h2><div class="grid"><div class="card stat"><small>Ingresos</small><b>${money(inc)}</b></div><div class="card stat"><small>Gastos</small><b>${money(exp)}</b></div><div class="card stat"><small>Balance</small><b>${money(inc-exp)}</b></div><div class="card stat"><small>Órdenes activas</small><b>${active}</b></div></div>
 <div class="two"><div class="card"><h3>Estado de sincronización</h3><p class="ok">● ${state.cloud?"Conectado a Supabase":"Modo local"}</p><p class="small muted">La información se guarda en la nube cuando hay sesión y conexión.</p></div><div class="card"><h3>Acciones rápidas</h3><div class="actions"><button onclick="newDevice()">+ Recibir equipo</button><button class="ghost" onclick="newCash('income')">+ Ingreso</button><button class="ghost" onclick="newCash('expense')">+ Gasto</button></div></div></div>`}
 function devicesView(){const q=prompt?null:null;$("main").innerHTML=`<div class="card"><div style="display:flex;gap:8px;align-items:center"><h2 style="margin:0">Equipos / Recepción</h2><button class="right" onclick="newDevice()">+ Recibir equipo</button></div><label>Buscar</label><input id="deviceSearch" oninput="listDevices()" placeholder="Cliente, teléfono, modelo, IMEI..."></div><div id="deviceList"></div>`;listDevices()}
-function listDevices(){const q=($("deviceSearch")?.value||"").toLowerCase();const arr=state.devices.filter(d=>[d.customer_name,d.customer_phone,d.model,d.imei].join(" ").toLowerCase().includes(q));$("deviceList").innerHTML=arr.map(d=>`<div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><div><h3>${esc(d.customer_name)} — ${esc(d.model)}</h3><p class="muted">${esc(d.imei||"Sin IMEI")} · ${esc(d.customer_phone||"Sin teléfono")}</p></div><span class="badge">${esc(d.lock_type||"Ninguno")}</span></div><p><b>Trabajo:</b> ${esc(d.work)}</p><p><b>Estado físico:</b> ${esc(d.condition)}</p><div class="photos">${state.photos.filter(x=>x.device_id===d.id).map(x=>`<img src="${esc(x.url)}" title="${esc(x.caption)}">`).join("")}</div><div class="actions"><button onclick="editDevice('${d.id}')">Editar</button><button class="ghost" onclick="showSecret('${d.id}')">Ver acceso</button><button class="ghost" onclick="photoInput('${d.id}')">Agregar fotos</button><button class="danger" onclick="deleteDevice('${d.id}')">Eliminar</button></div></div>`).join("")||`<div class="card"><p class="muted">No hay equipos registrados.</p></div>`}
+function listDevices(){const q=($("deviceSearch")?.value||"").toLowerCase();const arr=state.devices.filter(d=>[d.customer_name,d.customer_phone,d.model,d.imei].join(" ").toLowerCase().includes(q));$("deviceList").innerHTML=arr.map(d=>`<div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><div><h3>${esc(d.customer_name)} — ${esc(d.model)}</h3><p class="muted">${esc(d.imei||"Sin IMEI")} · ${esc(d.customer_phone||"Sin teléfono")}</p></div><span class="badge">${esc(d.lock_type||"Ninguno")}</span></div><p><b>Trabajo:</b> ${esc(d.work)}</p><p><b>Estado físico:</b> ${esc(d.condition)}</p><div class="photos">${state.photos.filter(x=>x.device_id===d.id).map(x=>`<img src="${esc(x.url)}" title="${esc(x.caption)}">`).join("")}</div><div class="actions"><button onclick="editDevice('${d.id}')">Editar</button><button class="ghost" onclick="showSecret('${d.id}')">Ver acceso</button><button class="ghost" onclick="photoInput('${d.id}')">Agregar fotos</button><button class="good" onclick="whatsAppCustomer('${d.id}','recibido')">WhatsApp</button><button class="danger" onclick="deleteDevice('${d.id}')">Eliminar</button></div></div>`).join("")||`<div class="card"><p class="muted">No hay equipos registrados.</p></div>`}
 
 function deviceForm(d={}){
   return `<div class="card">
@@ -79,14 +80,14 @@ function deviceForm(d={}){
       <div><label>IMEI</label><input id="f_imei" value="${esc(d.imei||"")}"></div>
       <div><label>Color</label><input id="f_color" value="${esc(d.color||"")}"></div>
       <div><label>Tipo de bloqueo</label>
-        <select id="f_lock">
+        <select id="f_lock" onchange="togglePatternInput()">
           ${["Ninguno","PIN","Patrón","Contraseña","Cuenta Google","Cuenta Apple"].map(x=>`<option ${d.lock_type===x?"selected":""}>${x}</option>`).join("")}
         </select>
       </div>
       <div><label>Estado físico</label><textarea id="f_condition">${esc(d.condition||"")}</textarea></div>
       <div><label>Trabajo solicitado</label><textarea id="f_work">${esc(d.work||"")}</textarea></div>
       <div class="full"><label>Observaciones</label><textarea id="f_obs">${esc(d.obs||"")}</textarea></div>
-      <div class="full"><label>PIN o contraseña del equipo (opcional)</label><input id="f_secret" type="password" autocomplete="off"></div>
+      <div class="full"><label>PIN, patrón o contraseña del equipo (solo con autorización del cliente)</label><input id="f_secret" type="password" autocomplete="off" placeholder="PIN o contraseña; para patrón, dibújalo abajo"><div id="patternWrap" class="hidden"><label>Dibuja el patrón uniendo los puntos</label><canvas id="patternCanvas" width="300" height="300" style="width:min(100%,300px);height:auto;border:1px solid #d1d5db;border-radius:14px;background:#f9fafb;touch-action:none"></canvas><div class="actions"><button type="button" class="ghost" onclick="clearPattern()">Borrar patrón</button></div><p class="small muted">Se guarda cifrado. Pide permiso al cliente y elimina el acceso cuando ya no sea necesario.</p></div></div>
       <div><label>Precio del trabajo (COP)</label><input id="f_price" type="number" min="0" value="${d.total??0}"></div>
       <div><label>Abono recibido (COP)</label><input id="f_deposit" type="number" min="0" value="${d.deposit??0}"></div>
     </div>
@@ -98,9 +99,42 @@ function deviceForm(d={}){
 }
 
     
+
+let drawnPattern=[];
+function togglePatternInput(){
+  const isPattern=$("f_lock")?.value==="Patrón";
+  $("patternWrap")?.classList.toggle("hidden",!isPattern);
+  if(isPattern) setTimeout(drawPatternGrid,20);
+}
+function drawPatternGrid(){
+  const c=$("patternCanvas"); if(!c)return;
+  const ctx=c.getContext("2d"),w=c.width,h=c.height;
+  ctx.clearRect(0,0,w,h);ctx.strokeStyle="#9ca3af";ctx.lineWidth=2;
+  const pts=[];for(let r=0;r<3;r++)for(let col=0;col<3;col++)pts.push({x:50+col*100,y:50+r*100,n:r*3+col+1});
+  ctx.strokeStyle="#cbd5e1";
+  for(let i=0;i<drawnPattern.length-1;i++){const a=pts.find(p=>p.n===drawnPattern[i]),b=pts.find(p=>p.n===drawnPattern[i+1]);if(a&&b){ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke()}}
+  pts.forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,drawnPattern.includes(p.n)?13:10,0,Math.PI*2);ctx.fillStyle=drawnPattern.includes(p.n)?"#047857":"#ffffff";ctx.fill();ctx.strokeStyle=drawnPattern.includes(p.n)?"#047857":"#475569";ctx.lineWidth=3;ctx.stroke();ctx.fillStyle=drawnPattern.includes(p.n)?"#fff":"#111827";ctx.font="12px sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(String(p.n),p.x,p.y)});
+}
+function patternPoint(e){
+ const c=$("patternCanvas");if(!c)return;
+ const rect=c.getBoundingClientRect(),x=(e.clientX-rect.left)*c.width/rect.width,y=(e.clientY-rect.top)*c.height/rect.height;
+ let best=null,dist=Infinity;
+ for(let r=0;r<3;r++)for(let col=0;col<3;col++){const p={x:50+col*100,y:50+r*100,n:r*3+col+1},d=Math.hypot(p.x-x,p.y-y);if(d<dist){dist=d;best=p}}
+ if(best&&dist<35&&!drawnPattern.includes(best.n)){drawnPattern.push(best.n);drawPatternGrid()}
+}
+function clearPattern(){drawnPattern=[];drawPatternGrid()}
+function setupPatternCanvas(){
+ const c=$("patternCanvas");if(!c)return;
+ c.onpointerdown=e=>{e.preventDefault();drawnPattern=[];c.setPointerCapture?.(e.pointerId);patternPoint(e)};
+ c.onpointermove=e=>{if(e.buttons||e.pressure>0){e.preventDefault();patternPoint(e)}};
+ c.onpointerup=e=>{e.preventDefault();if(drawnPattern.length<4){toast("El patrón debe unir al menos 4 puntos",true);drawnPattern=[];drawPatternGrid()}else{$("f_secret").value="PATRON:"+drawnPattern.join("-");toast("Patrón capturado")}};
+ drawPatternGrid();
+}
+
 function newDevice() {
   state.tab = "equipos";
   $("main").innerHTML = deviceForm();
+  togglePatternInput();setupPatternCanvas();
   window.scrollTo(0, 0);
 }
 
@@ -195,6 +229,7 @@ async function saveDevice(id) {
         value: deposit,
         method: "",
         concept: `Abono reparación - ${d.customer_name} - ${d.model}`,
+        device_id: d.id,
         created_at: new Date().toISOString()
       };
 
@@ -226,50 +261,87 @@ async function deleteDevice(id){
   }
 
   const relatedOrders=state.orders.filter(o=>o.device_id===id);
-
-  const message=relatedOrders.length
-    ? `Este equipo tiene ${relatedOrders.length} pedido(s) asociado(s). Si continúas, también se eliminarán esos pedidos. ¿Deseas continuar?`
-    : "¿Eliminar este equipo y sus fotos?";
-
+  const relatedCash=state.cash.filter(m=>m.device_id===id);
+  const message=`Se eliminará el equipo${relatedOrders.length?`, ${relatedOrders.length} orden(es)`:""}${relatedCash.length?` y ${relatedCash.length} movimiento(s) de caja asociado(s)`:""}. Esta acción no se puede deshacer. ¿Deseas continuar?`;
   if(!confirm(message)) return;
 
-  if(relatedOrders.length){
-    const {error:ordersError}=await sb
-      .from("orders")
-      .delete()
-      .eq("device_id",id);
-
-    if(ordersError){
-      toast("No se pudieron eliminar los pedidos: "+ordersError.message,true);
-      return;
-    }
+  // Eliminar primero movimientos vinculados para que la caja no conserve abonos de prueba.
+  const {error:cashError}=await sb.from("cash_entries")
+    .delete().eq("device_id",id).eq("user_id",state.session.user.id);
+  if(cashError){
+    toast("No se pudieron eliminar los movimientos de caja: "+cashError.message,true);
+    return;
   }
 
-  const {error}=await sb.from("devices").delete().eq("id",id);
+  const {error:ordersError}=await sb.from("orders")
+    .delete().eq("device_id",id).eq("user_id",state.session.user.id);
+  if(ordersError){
+    toast("No se pudieron eliminar las órdenes: "+ordersError.message,true);
+    return;
+  }
 
+  const {error:photosError}=await sb.from("device_photos")
+    .delete().eq("device_id",id).eq("user_id",state.session.user.id);
+  if(photosError){
+    toast("No se pudieron eliminar los registros de fotos: "+photosError.message,true);
+    return;
+  }
+
+  const {error}=await sb.from("devices").delete()
+    .eq("id",id).eq("user_id",state.session.user.id);
   if(error){
     toast("No se pudo eliminar el equipo: "+error.message,true);
     return;
   }
 
+  state.cash=state.cash.filter(m=>m.device_id!==id);
   state.orders=state.orders.filter(o=>o.device_id!==id);
   state.devices=state.devices.filter(x=>x.id!==id);
   state.photos=state.photos.filter(x=>x.device_id!==id);
-
   saveCache();
   listDevices();
-  toast("Equipo y pedidos asociados eliminados");
+  toast("Equipo, órdenes y movimientos asociados eliminados");
+}
+function whatsAppCustomer(id,kind="recibido"){
+ const d=state.devices.find(x=>x.id===id);if(!d?.customer_phone){toast("Este cliente no tiene teléfono registrado",true);return}
+ let phone=d.customer_phone.replace(/\D/g,"");if(phone.length===10&&phone.startsWith("3"))phone="57"+phone;
+ const msg=kind==="listo"?`Hola ${d.customer_name}, tu equipo ${d.model} está listo para entregar en AG_CELL Servicio Técnico.`:`Hola ${d.customer_name}, recibimos tu equipo ${d.model} en AG_CELL Servicio Técnico. Trabajo solicitado: ${d.work||"por revisar"}. Te mantendremos informado.`;
+ window.open("https://wa.me/"+phone+"?text="+encodeURIComponent(msg),"_blank","noopener");
 }
 async function showSecret(id){const d=state.devices.find(x=>x.id===id);if(!d?.lock_secret_ciphertext){toast("No hay acceso guardado");return}const s=await decryptSecret(d.lock_secret_ciphertext);alert(s||"No se pudo descifrar. Vuelve a introducir la contraseña de tu cuenta.");}
 async function encryptSecret(s){if(!state.cryptoKey)return null;const iv=crypto.getRandomValues(new Uint8Array(12));const enc=new TextEncoder();const ct=await crypto.subtle.encrypt({name:"AES-GCM",iv},state.cryptoKey,enc.encode(s));return JSON.stringify({iv:b64(iv),ct:b64(new Uint8Array(ct))})}
 async function decryptSecret(v){try{if(!state.cryptoKey)return null;const x=JSON.parse(v);const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:ub64(x.iv)},state.cryptoKey,ub64(x.ct));return new TextDecoder().decode(pt)}catch{return null}}
 function b64(a){return btoa(String.fromCharCode(...a))}function ub64(s){return Uint8Array.from(atob(s),c=>c.charCodeAt(0))}
 async function deriveKey(password){const base=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveKey"]);return crypto.subtle.deriveKey({name:"PBKDF2",salt:new TextEncoder().encode(ENC_SALT),iterations:150000,hash:"SHA-256"},base,{name:"AES-GCM",length:256},false,["encrypt","decrypt"])}
-function ordersView(){const rows=state.orders.map(o=>{const d=state.devices.find(x=>x.id===o.device_id)||{};return `<tr><td>#${o.number||"—"}</td><td>${esc(d.customer_name||"—")}<br>${esc(d.model||"")}</td><td>${esc(o.status)}</td><td>${money(o.total)}</td><td>${money(o.deposit)}</td><td>${money(Number(o.total)-Number(o.deposit))}</td><td><button onclick="editOrder('${o.id}')">Editar</button></td></tr>`}).join("");$("main").innerHTML=`<div class="card"><div style="display:flex;align-items:center"><h2>Órdenes</h2><button class="right" onclick="newOrder()">+ Nueva orden</button></div><div class="scroll"><table><thead><tr><th>N°</th><th>Equipo</th><th>Estado</th><th>Total</th><th>Abono</th><th>Saldo</th><th></th></tr></thead><tbody>${rows||"<tr><td colspan=7>No hay órdenes.</td></tr>"}</tbody></table></div></div>`}
+function ordersView(){const rows=state.orders.map(o=>{const d=state.devices.find(x=>x.id===o.device_id)||{};return `<tr><td>#${o.number||"—"}</td><td>${esc(d.customer_name||"—")}<br>${esc(d.model||"")}</td><td>${esc(o.status)}</td><td>${money(o.total)}</td><td>${money(o.deposit)}</td><td>${money(Number(o.total)-Number(o.deposit))}</td><td><button onclick="editOrder('${o.id}')">Editar</button> <button class="good" onclick="whatsAppCustomer('${o.device_id}','${o.status==="Listo"||o.status==="Entregado"?"listo":"recibido"}')">WhatsApp</button></td></tr>`}).join("");$("main").innerHTML=`<div class="card"><div style="display:flex;align-items:center"><h2>Órdenes</h2><button class="right" onclick="newOrder()">+ Nueva orden</button></div><div class="scroll"><table><thead><tr><th>N°</th><th>Equipo</th><th>Estado</th><th>Total</th><th>Abono</th><th>Saldo</th><th></th></tr></thead><tbody>${rows||"<tr><td colspan=7>No hay órdenes.</td></tr>"}</tbody></table></div></div>`}
 function orderForm(o={}){return `<div class="card"><h2>${o.id?"Editar orden":"Nueva orden"}</h2><label>Equipo</label><select id="o_device">${state.devices.map(d=>`<option value="${d.id}" ${o.device_id===d.id?"selected":""}>${esc(d.customer_name)} — ${esc(d.model)} ${d.imei?"· "+esc(d.imei):""}</option>`).join("")}</select><div class="formgrid"><div><label>Trabajo</label><textarea id="o_work">${esc(o.work)}</textarea></div><div><label>Estado</label><select id="o_status">${["Recibido","En reparación","Listo","Entregado","Cancelado"].map(x=>`<option ${o.status===x?"selected":""}>${x}</option>`).join("")}</select></div><div><label>Total</label><input id="o_total" type="number" min="0" value="${o.total||0}"></div><div><label>Abono</label><input id="o_deposit" type="number" min="0" value="${o.deposit||0}"></div><div class="full"><label>Notas</label><textarea id="o_notes">${esc(o.notes)}</textarea></div></div><div class="actions"><button onclick="saveOrder('${o.id||""}')">Guardar</button><button class="ghost" onclick="ordersView()">Cancelar</button></div></div>`}
 function newOrder(){if(!state.devices.length){toast("Primero recibe un equipo",true);newDevice();return}state.tab="ordenes";$("main").innerHTML=orderForm()}
 function editOrder(id){state.tab="ordenes";$("main").innerHTML=orderForm(state.orders.find(x=>x.id===id)||{})}
 async function saveOrder(id){const old=state.orders.find(x=>x.id===id),total=Number($("o_total").value||0),dep=Number($("o_deposit").value||0);if(dep>total){toast("El abono no puede superar el total",true);return}const o={id:id||crypto.randomUUID(),user_id:state.session.user.id,device_id:$("o_device").value,work:$("o_work").value,status:$("o_status").value,total,deposit:dep,notes:$("o_notes").value,received_at:old?.received_at||new Date().toISOString(),updated_at:new Date().toISOString()};const {data,error}=await sb.from("orders").upsert(o).select().single();if(error){toast(error.message,true);return}state.orders=[...state.orders.filter(x=>x.id!==o.id),data];saveCache();toast("Orden guardada");ordersView()}
+
+function inventoryView(){
+ const items=state.inventory||[];
+ $("main").innerHTML=`<div class="card"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><h2 style="margin:0">Inventario</h2><button class="right" onclick="inventoryForm()">+ Agregar artículo</button></div><p class="small muted">Controla repuestos, accesorios, existencias y precio.</p></div><div class="card scroll"><table><thead><tr><th>Artículo</th><th>SKU</th><th>Existencia</th><th>Costo</th><th>Venta</th><th>Acciones</th></tr></thead><tbody>${items.map(x=>`<tr><td>${esc(x.name)}${Number(x.stock)<=Number(x.min_stock||0)?'<br><span class="err small">Existencia baja</span>':''}</td><td>${esc(x.sku||"—")}</td><td>${Number(x.stock)||0}</td><td>${money(x.cost)}</td><td>${money(x.price)}</td><td><button onclick="inventoryForm('${x.id}')">Editar</button> <button class="danger" onclick="deleteInventory('${x.id}')">Eliminar</button></td></tr>`).join("")||'<tr><td colspan="6">No hay artículos registrados.</td></tr>'}</tbody></table></div>`;
+}
+function inventoryForm(id=""){
+ const x=(state.inventory||[]).find(a=>a.id===id)||{};
+ $("main").innerHTML=`<div class="card"><h2>${id?"Editar artículo":"Nuevo artículo"}</h2><div class="formgrid"><div class="full"><label>Nombre del artículo *</label><input id="i_name" value="${esc(x.name||"")}"></div><div><label>Código / SKU</label><input id="i_sku" value="${esc(x.sku||"")}"></div><div><label>Existencia</label><input id="i_stock" type="number" min="0" value="${x.stock??0}"></div><div><label>Stock mínimo</label><input id="i_min" type="number" min="0" value="${x.min_stock??1}"></div><div><label>Costo (COP)</label><input id="i_cost" type="number" min="0" value="${x.cost??0}"></div><div><label>Precio de venta (COP)</label><input id="i_price" type="number" min="0" value="${x.price??0}"></div><div class="full"><label>Notas</label><textarea id="i_notes">${esc(x.notes||"")}</textarea></div></div><div class="actions"><button onclick="saveInventory('${id}')">Guardar artículo</button><button class="ghost" onclick="inventoryView()">Cancelar</button></div><p class="small muted">Inventario requiere la tabla inventory_items en Supabase. Incluimos las instrucciones en el ZIP.</p></div>`;
+}
+async function saveInventory(id){
+ const name=$("i_name").value.trim(),stock=Number($("i_stock").value||0),min_stock=Number($("i_min").value||0),cost=Number($("i_cost").value||0),price=Number($("i_price").value||0);
+ if(!name||[stock,min_stock,cost,price].some(n=>n<0)){toast("Revisa nombre y valores",true);return}
+ const item={id:id||crypto.randomUUID(),user_id:state.session.user.id,name,sku:$("i_sku").value.trim(),stock,min_stock,cost,price,notes:$("i_notes").value.trim(),updated_at:new Date().toISOString()};
+ const {data,error}=await sb.from("inventory_items").upsert(item).select().single();
+ if(error){toast("No se guardó el inventario: "+error.message,true);return}
+ state.inventory=state.inventory||[];state.inventory=[...state.inventory.filter(x=>x.id!==item.id),data];saveCache();inventoryView();toast("Artículo guardado");
+}
+async function deleteInventory(id){
+ if(!confirm("¿Eliminar este artículo del inventario?"))return;
+ const {error}=await sb.from("inventory_items").delete().eq("id",id).eq("user_id",state.session.user.id);
+ if(error){toast("No se pudo eliminar: "+error.message,true);return}
+ state.inventory=(state.inventory||[]).filter(x=>x.id!==id);saveCache();inventoryView();toast("Artículo eliminado");
+}
+
 function cashView(){
   const inc=state.cash.filter(x=>x.type==="income").reduce((a,x)=>a+Number(x.value),0);
   const exp=state.cash.filter(x=>x.type==="expense").reduce((a,x)=>a+Number(x.value),0);
@@ -332,19 +404,19 @@ async function deleteCash(id){
   cashView();
   toast("Movimiento eliminado");
 }
-function configView(){const p=state.profile||{};$("main").innerHTML=`<div class="two"><div class="card"><h2>Perfil del negocio</h2><div style="display:flex;align-items:center;gap:14px;margin-bottom:14px"><div class="logo" style="width:72px;height:72px;border-radius:18px;font-size:22px;overflow:hidden">${p.logo_url||p.logo_path?`<img src="${esc(p.logo_url||p.logo_path)}" style="width:72px;height:72px;object-fit:cover">`:'AG'}</div><div><label>Foto / logo de perfil</label><input id="p_logo_file" type="file" accept="image/*" onchange="previewLogo()"><p class="small muted">Elige una foto desde el celular o computador.</p></div></div><div class="formgrid"><div class="full"><label>Nombre</label><input id="p_name" value="${esc(p.shop_name||"AG_CELL Servicio Técnico")}"></div><div class="full"><label>Descripción</label><input id="p_sub" value="${esc(p.subtitle||"Gestión de reparación y servicio")}"></div><div><label>Teléfono</label><input id="p_phone" value="${esc(p.phone||"")}"></div><div><label>Correo</label><input id="p_email" value="${esc(p.email||"")}"></div><div class="full"><label>Dirección</label><input id="p_address" value="${esc(p.address||"")}"></div></div><div class="actions"><button onclick="saveProfile()">Guardar perfil</button><button class="ghost" onclick="installAGCell()">📲 Instalar AG_CELL</button></div></div><div class="card"><h2>Seguridad</h2><p class="small muted">El PIN bloquea la aplicación en este dispositivo. Los accesos de equipos se cifran antes de enviarse a Supabase usando la contraseña de tu cuenta.</p><button onclick="changePin()">Cambiar PIN</button><button class="ghost" onclick="sessionStorage.removeItem('agcell_unlocked');render()">Bloquear ahora</button></div></div>`}
-async function saveProfile(){const p={id:state.profile?.id||crypto.randomUUID(),user_id:state.session.user.id,shop_name:$("p_name").value.trim()||"AG_CELL Servicio Técnico",subtitle:$("p_sub").value.trim(),phone:$("p_phone").value.trim(),email:$("p_email").value.trim(),address:$("p_address").value.trim(),logo_path:state.profile?.logo_path||null,updated_at:new Date().toISOString()};const file=$("p_logo_file")?.files?.[0];if(file){if(file.size>3*1024*1024){toast("La foto supera 3 MB",true);return}const ext=(file.name.split(".").pop()||"jpg").toLowerCase();const path=`${state.session.user.id}/profile/logo-${crypto.randomUUID()}.${ext}`;const {error:upErr}=await sb.storage.from("agcell-photos").upload(path,file,{upsert:false});if(upErr){toast(upErr.message,true);return}p.logo_path=path}const {data,error}=await sb.from("business_profiles").upsert(p).select().single();if(error){toast(error.message,true);return}state.profile=data;state.profile.logo_url=null;if(data.logo_path){const signed=await sb.storage.from("agcell-photos").createSignedUrl(data.logo_path,60*60*24*7);if(signed.data?.signedUrl)state.profile.logo_url=signed.data.signedUrl}saveCache();renderApp();toast("Perfil guardado")}
+function configView(){const p=state.profile||{};$("main").innerHTML=`<div class="two"><div class="card"><h2>Perfil del negocio</h2><div style="display:flex;align-items:center;gap:14px;margin-bottom:14px"><div class="logo" style="width:72px;height:72px;border-radius:18px;font-size:22px;overflow:hidden">${p.logo_url||p.logo_path?`<img src="${esc(p.logo_url||p.logo_path)}" style="width:72px;height:72px;object-fit:cover">`:'AG'}</div><div><label>Foto / logo de perfil</label><input id="p_logo_file" type="file" accept="image/*" onchange="previewLogo()"><p class="small muted">Elige una foto desde el celular o computador.</p></div></div><div class="formgrid"><div class="full"><label>Nombre</label><input id="p_name" value="${esc(p.shop_name||"AG_CELL Servicio Técnico")}"></div><div class="full"><label>Descripción</label><input id="p_sub" value="${esc(p.subtitle||"La tecnología merece una segunda oportunidad")}"></div><div><label>Teléfono</label><input id="p_phone" value="${esc(p.phone||"")}"></div><div><label>Correo</label><input id="p_email" value="${esc(p.email||"")}"></div><div class="full"><label>Dirección</label><input id="p_address" value="${esc(p.address||"")}"></div></div><div class="actions"><button onclick="saveProfile()">Guardar perfil</button><button class="ghost" onclick="installAGCell()">📲 Instalar AG_CELL</button></div></div><div class="card"><h2>Seguridad</h2><p class="small muted">El PIN bloquea la aplicación en este dispositivo. Los accesos de equipos se cifran antes de enviarse a Supabase usando la contraseña de tu cuenta.</p><button onclick="changePin()">Cambiar PIN</button><button class="ghost" onclick="sessionStorage.removeItem('agcell_unlocked');render()">Bloquear ahora</button></div></div>`}
+async function saveProfile(){const p={id:state.profile?.id||crypto.randomUUID(),user_id:state.session.user.id,shop_name:$("p_name").value.trim()||"AG_CELL Servicio Técnico",subtitle:$("p_sub").value.trim(),phone:$("p_phone").value.trim(),email:$("p_email").value.trim(),address:$("p_address").value.trim(),logo_path:state.profile?.logo_path||null,updated_at:new Date().toISOString()};const file=$("p_logo_file")?.files?.[0];if(file){if(file.size>3*1024*1024){toast("La foto supera 3 MB",true);return}const ext=(file.name.split(".").pop()||"jpg").toLowerCase();const path=`${state.session.user.id}/profile/logo-${crypto.randomUUID()}.${ext}`;const {error:upErr}=await sb.storage.from("agcell-photos").upload(path,file,{upsert:false});if(upErr){toast(upErr.message,true);return}p.logo_path=path}const {data,error}=await sb.from("business_profile").upsert(p).select().single();if(error){toast(error.message,true);return}state.profile=data;state.profile.logo_url=null;if(data.logo_path){const signed=await sb.storage.from("agcell-photos").createSignedUrl(data.logo_path,60*60*24*7);if(signed.data?.signedUrl)state.profile.logo_url=signed.data.signedUrl}saveCache();renderApp();toast("Perfil guardado")}
 async function installAGCell(){if(deferredInstallPrompt){deferredInstallPrompt.prompt();const result=await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;return}toast("Si tu navegador no muestra la instalación automática, usa el menú del navegador y elige 'Instalar aplicación' o 'Agregar a pantalla de inicio'.")}
 function previewLogo(){const file=$("p_logo_file")?.files?.[0];if(!file)return;const r=new FileReader();r.onload=()=>{const box=document.querySelector('.card .logo');if(box)box.innerHTML=`<img src="${r.result}" style="width:72px;height:72px;object-fit:cover">`};r.readAsDataURL(file)}
 async function changePin(){const old=prompt("PIN actual");if(await hashPin(old||"")!==localStorage.getItem(PINKEY)){toast("PIN actual incorrecto",true);return}const p=prompt("Nuevo PIN (4 a 8 dígitos)");if(!validPin(p||"")){toast("PIN inválido",true);return}localStorage.setItem(PINKEY,await hashPin(p));toast("PIN cambiado")}
 function photoInput(deviceId){const i=document.createElement("input");i.type="file";i.accept="image/*";i.multiple=true;i.onchange=()=>uploadPhotos(deviceId,[...i.files]);i.click()}
 async function uploadPhotos(deviceId,files){for(const file of files.slice(0,8)){if(file.size>3*1024*1024){toast("Una foto supera 3 MB",true);continue}const path=`${state.session.user.id}/${deviceId}/${crypto.randomUUID()}.${(file.name.split(".").pop()||"jpg").toLowerCase()}`;const {error}=await sb.storage.from("agcell-photos").upload(path,file,{upsert:false});if(error){toast(error.message,true);continue}const rec={id:crypto.randomUUID(),user_id:state.session.user.id,device_id:deviceId,storage_path:path,caption:"",created_at:new Date().toISOString(),url:""};const {error:e}=await sb.from("device_photos").insert({id:rec.id,user_id:rec.user_id,device_id:rec.device_id,storage_path:rec.storage_path,caption:""});if(e){toast(e.message,true);continue}const signed=await sb.storage.from("agcell-photos").createSignedUrl(path,3600);rec.url=signed.data?.signedUrl||"";state.photos.push(rec)}saveCache();listDevices();toast("Fotos subidas")}
-async function loadCloud(){if(!state.session)return;const uid=state.session.user.id;const [p,d,o,c,ph]=await Promise.all([sb.from("business_profiles").select("*").eq("user_id",uid).maybeSingle(),sb.from("devices").select("*").order("updated_at",{ascending:false}),sb.from("orders").select("*").order("updated_at",{ascending:false}),sb.from("cash_entries").select("*").order("created_at",{ascending:false}),sb.from("device_photos").select("*").order("created_at",{ascending:false})]);for(const x of [p,d,o,c,ph])if(x.error){toast(x.error.message,true);return}state.profile=p.data;
+async function loadCloud(){if(!state.session)return;const uid=state.session.user.id;const [p,d,o,c,ph,inv]=await Promise.all([sb.from("business_profile").select("*").eq("user_id",uid).maybeSingle(),sb.from("devices").select("*").eq("user_id",uid).order("updated_at",{ascending:false}),sb.from("orders").select("*").eq("user_id",uid).order("updated_at",{ascending:false}),sb.from("cash_entries").select("*").eq("user_id",uid).order("created_at",{ascending:false}),sb.from("device_photos").select("*").eq("user_id",uid).order("created_at",{ascending:false}),sb.from("inventory_items").select("*").eq("user_id",uid).order("updated_at",{ascending:false})]);for(const x of [p,d,o,c,ph])if(x.error){toast(x.error.message,true);return}if(inv.error && !/inventory_items|does not exist|schema cache/i.test(inv.error.message)){toast(inv.error.message,true);return}state.profile=p.data;
 if(state.profile?.logo_path){const signedLogo=await sb.storage.from("agcell-photos").createSignedUrl(state.profile.logo_path,60*60*24*7);state.profile.logo_url=signedLogo.data?.signedUrl||""}
-state.devices=d.data||[];state.orders=o.data||[];state.cash=c.data||[];state.photos=[];for(const x of (ph.data||[])){const signed=await sb.storage.from("agcell-photos").createSignedUrl(x.storage_path,3600);state.photos.push({...x,url:signed.data?.signedUrl||""})}saveCache()}
+state.devices=d.data||[];state.orders=o.data||[];state.cash=c.data||[];state.inventory=inv.error?[]:(inv.data||[]);state.photos=[];for(const x of (ph.data||[])){const signed=await sb.storage.from("agcell-photos").createSignedUrl(x.storage_path,3600);state.photos.push({...x,url:signed.data?.signedUrl||""})}saveCache()}
 async function signOut(){await sb.auth.signOut();sessionStorage.removeItem("agcell_unlocked");location.reload()}
 async function boot(){loadCache();const {data}=await sb.auth.getSession();state.session=data.session;if(!state.session){showAuth();return}if(locked()){render();return}await loadCloud();render()}
-function showAuth(){document.getElementById("app").innerHTML=`<div class="login"><div class="box card"><h1>AG_CELL</h1><p>Conecta tu cuenta para sincronizar entre celular y computador.</p><label>Correo</label><input id="auth_email" type="email" placeholder="tu-correo@ejemplo.com"><label>Contraseña</label><input id="auth_pass" type="password" placeholder="Mínimo 6 caracteres"><div class="actions"><button onclick="authLogin()">Entrar</button><button class="ghost" onclick="authSignup()">Crear cuenta</button></div><p class="small muted">Si acabas de crear la cuenta, Supabase puede pedir confirmación del correo según la configuración del proyecto.</p></div></div>`}
+function showAuth(){document.getElementById("app").innerHTML=`<div class="login"><div class="box card"><h1>AG_CELL</h1><p>Servicio Técnico</p><p><b>La tecnología merece una segunda oportunidad</b></p><p>Conecta tu cuenta para sincronizar entre celular y computador.</p><label>Correo</label><input id="auth_email" type="email" placeholder="tu-correo@ejemplo.com"><label>Contraseña</label><input id="auth_pass" type="password" placeholder="Mínimo 6 caracteres"><div class="actions"><button onclick="authLogin()">Entrar</button><button class="ghost" onclick="authSignup()">Crear cuenta</button></div><p class="small muted">Si acabas de crear la cuenta, Supabase puede pedir confirmación del correo según la configuración del proyecto.</p></div></div>`}
 async function authLogin(){const {data,error}=await sb.auth.signInWithPassword({email:$("auth_email").value.trim(),password:$("auth_pass").value});if(error){toast(error.message,true);return}state.session=data.session;state.cryptoKey=await deriveKey($("auth_pass").value);await ensurePin();await loadCloud();render()}
 async function authSignup(){const email=$("auth_email").value.trim(),password=$("auth_pass").value;if(!email||password.length<6){toast("Correo y contraseña válida son obligatorios",true);return}const {data,error}=await sb.auth.signUp({email,password});if(error){toast(error.message,true);return}if(data.session){state.session=data.session;state.cryptoKey=await deriveKey(password);await ensurePin();await loadCloud();render()}else toast("Cuenta creada. Revisa tu correo para confirmar y luego entra.")}
 sb.auth.onAuthStateChange((_event,session)=>{state.session=session});
