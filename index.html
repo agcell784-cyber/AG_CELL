@@ -372,15 +372,131 @@ function orderForm(o={}) {
 }
 
 
+
 async function saveOrder(id) {
   const old = state.orders.find(x => x.id === id);
   const total = Number($("o_total").value || 0);
-  const dep = Number($("o_deposit").value || 0);
+  const previousDeposit = Number(old?.deposit ?? 0);
+  const paymentNow = Number($("o_payment_now").value || 0);
 
-  if (total < 0 || dep < 0 || dep > total) {
-    toast("El abono no puede superar el total", true);
+  if (total < 0 || previousDeposit < 0 || paymentNow < 0) {
+    toast("Revisa los valores: no pueden ser negativos", true);
     return;
   }
+
+  const deviceId = $("o_device").value;
+  const device = state.devices.find(x => x.id === deviceId);
+
+  if (!device) {
+    toast("No se encontró el equipo de esta orden", true);
+    return;
+  }
+
+  if (previousDeposit + paymentNow > total) {
+    toast("El pago acumulado no puede superar el total", true);
+    return;
+  }
+
+  const newDeposit = previousDeposit + paymentNow;
+  const now = new Date().toISOString();
+
+  const o = {
+    id: id || crypto.randomUUID(),
+    user_id: state.session.user.id,
+    device_id: deviceId,
+    work: $("o_work").value,
+    status: $("o_status").value,
+    total,
+    deposit: newDeposit,
+    notes: $("o_notes").value,
+    received_at: old?.received_at || device.received_at || now,
+    updated_at: now
+  };
+
+  // Guardar primero la orden.
+  const { data, error } = await sb.from("orders")
+    .upsert(o).select().single();
+
+  if (error) {
+    toast(error.message, true);
+    return;
+  }
+
+  // Actualizar el equipo relacionado.
+  const { error: deviceError } = await sb.from("devices")
+    .update({
+      total,
+      deposit: newDeposit,
+      work: o.work,
+      updated_at: now
+    })
+    .eq("id", deviceId)
+    .eq("user_id", state.session.user.id);
+
+  if (deviceError) {
+    toast("Orden guardada, pero falló la actualización del equipo: " + deviceError.message, true);
+    return;
+  }
+
+  // Registrar únicamente el pago real recibido ahora.
+  if (paymentNow > 0) {
+    const movement = {
+      user_id: state.session.user.id,
+      type: "income",
+      value: paymentNow,
+      method: "",
+      concept: `Pago reparación - ${device.customer_name} - ${device.model}`,
+      device_id: deviceId,
+      created_at: now
+    };
+
+    const { data: savedMovement, error: cashError } =
+      await sb.from("cash_entries").insert(movement).select().single();
+
+    if (cashError) {
+      toast("Orden guardada, pero falló el ingreso en Caja: " + cashError.message, true);
+      return;
+    }
+
+    state.cash.unshift(savedMovement);
+  }  }
+
+  state.orders = [
+    ...state.orders.filter(x => x.id !== data.id),
+    data
+  ];
+
+  state.devices = state.devices.map(d =>
+    d.id === deviceId
+      ? { ...d, total, deposit: newDeposit, work: o.work, updated_at: now }
+      : d
+  );
+
+  saveCache();
+
+  const balance = total - newDeposit;
+  toast(`Orden guardada. Saldo pendiente: ${money(balance)}`);
+  ordersView();
+}
+
+  state.orders = [
+    ...state.orders.filter(x => x.id !== data.id),
+    data
+  ];
+
+  state.devices = state.devices.map(d =>
+    d.id === deviceId
+      ? { ...d, total, deposit: newDeposit, work: o.work, updated_at: now }
+      : d
+  );
+
+  saveCache();
+
+  const balance = total - newDeposit;
+  toast(`Orden guardada. Saldo pendiente: ${money(balance)}`);
+  ordersView();
+}
+
 
   const deviceId = $("o_device").value;
   const device = state.devices.find(x => x.id === deviceId);
