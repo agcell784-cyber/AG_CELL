@@ -413,7 +413,6 @@ async function saveOrder(id) {
     updated_at: now
   };
 
-  // Guardar primero la orden.
   const { data, error } = await sb.from("orders")
     .upsert(o).select().single();
 
@@ -422,7 +421,6 @@ async function saveOrder(id) {
     return;
   }
 
-  // Actualizar el equipo relacionado.
   const { error: deviceError } = await sb.from("devices")
     .update({
       total,
@@ -438,7 +436,6 @@ async function saveOrder(id) {
     return;
   }
 
-  // Registrar únicamente el pago real recibido ahora.
   if (paymentNow > 0) {
     const movement = {
       user_id: state.session.user.id,
@@ -459,7 +456,7 @@ async function saveOrder(id) {
     }
 
     state.cash.unshift(savedMovement);
-  }  }
+  }
 
   state.orders = [
     ...state.orders.filter(x => x.id !== data.id),
@@ -476,108 +473,6 @@ async function saveOrder(id) {
 
   const balance = total - newDeposit;
   toast(`Orden guardada. Saldo pendiente: ${money(balance)}`);
-  ordersView();
-}
-
-  state.orders = [
-    ...state.orders.filter(x => x.id !== data.id),
-    data
-  ];
-
-  state.devices = state.devices.map(d =>
-    d.id === deviceId
-      ? { ...d, total, deposit: newDeposit, work: o.work, updated_at: now }
-      : d
-  );
-
-  saveCache();
-
-  const balance = total - newDeposit;
-  toast(`Orden guardada. Saldo pendiente: ${money(balance)}`);
-  ordersView();
-}
-
-
-  const deviceId = $("o_device").value;
-  const device = state.devices.find(x => x.id === deviceId);
-
-  if (!device) {
-    toast("No se encontró el equipo de esta orden", true);
-    return;
-  }
-
-  const previousDeposit = Number(old?.deposit || 0);
-  const difference = dep - previousDeposit;
-
-  const o = {
-    id: id || crypto.randomUUID(),
-    user_id: state.session.user.id,
-    device_id: deviceId,
-    work: $("o_work").value,
-    status: $("o_status").value,
-    total,
-    deposit: dep,
-    notes: $("o_notes").value,
-    received_at: old?.received_at || new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  };
-
-  const { data, error } = await sb.from("orders").upsert(o).select().single();
-
-  if (error) {
-    toast(error.message, true);
-    return;
-  }
-
-  state.orders = [
-    ...state.orders.filter(x => x.id !== o.id),
-    data
-  ];
-
-  // Mantener actualizado el precio y el abono del equipo.
-  const { error: deviceError } = await sb.from("devices")
-    .update({ total, deposit: dep, updated_at: new Date().toISOString() })
-    .eq("id", deviceId)
-    .eq("user_id", state.session.user.id);
-
-  if (deviceError) {
-    saveCache();
-    toast("Orden guardada, pero no se pudo actualizar el equipo: " + deviceError.message, true);
-    ordersView();
-    return;
-  }
-
-  state.devices = state.devices.map(d =>
-    d.id === deviceId ? { ...d, total, deposit: dep } : d
-  );
-
-  // Registrar solamente la diferencia del abono, sin duplicar ingresos.
-  if (difference !== 0) {
-    const movement = {
-      user_id: state.session.user.id,
-      type: difference > 0 ? "income" : "expense",
-      value: Math.abs(difference),
-      method: "",
-      concept: `Ajuste de abono reparación - ${device.customer_name} - ${device.model}`,
-      device_id: deviceId,
-      created_at: new Date().toISOString()
-    };
-
-    const { data: savedMovement, error: cashError } =
-      await sb.from("cash_entries").insert(movement).select().single();
-
-    if (cashError) {
-      saveCache();
-      toast("Orden guardada, pero falló el movimiento de Caja: " + cashError.message, true);
-      ordersView();
-      return;
-    }
-
-    state.cash.unshift(savedMovement);
-  }
-
-  saveCache();
-  toast("Orden y Caja actualizadas");
   ordersView();
 }
 
