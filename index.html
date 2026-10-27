@@ -149,36 +149,66 @@ async function saveDevice(id) {
     return;
   }
 
-  if(!id){
-    const order={
+ 
+if(!id){
+  const order={
+    user_id:state.session.user.id,
+    device_id:d.id,
+    work:d.work,
+    status:"Recibido",
+    total,
+    deposit,
+    notes:d.obs,
+    received_at:d.received_at,
+    updated_at:new Date().toISOString()
+  };
+
+  const {data:createdOrder,error:orderError}=await sb
+    .from("orders")
+    .insert(order)
+    .select()
+    .single();
+
+  if(orderError){
+    await sb.from("devices")
+      .delete()
+      .eq("id",d.id)
+      .eq("user_id",state.session.user.id);
+    toast("No se pudo crear la orden: "+orderError.message,true);
+    return;
+  }
+
+  if(deposit>0){
+    const movement={
       user_id:state.session.user.id,
+      type:"income",
+      value:deposit,
+      method:"",
+      concept:`Abono reparación - ${d.customer_name} - ${d.model}`,
       device_id:d.id,
-      work:d.work,
-      status:"Recibido",
-      total,
-      deposit,
-      notes:d.obs,
-      received_at:d.received_at,
-      updated_at:new Date().toISOString()
+      created_at:new Date().toISOString()
     };
 
-    
+    const {data:savedMovement,error:cashError}=await sb
+      .from("cash_entries")
+      .insert(movement)
+      .select()
+      .single();
+
+    if(cashError){
+      toast("Orden guardada, pero falló el ingreso en Caja: "+cashError.message,true);
       return;
     }
 
-    if(deposit>0){
-      const movement={
-        user_id:state.session.user.id,
-        type:"income",
-        value:deposit,
-        method:"",
-        concept:`Abono reparación - ${d.customer_name} - ${d.model}`,
-        created_at:new Date().toISOString()
-      };
+    state.cash.unshift(savedMovement);
+  }
 
-      const {error:cashError}=await sb.from("cash_entries").insert(movement);
+  state.orders=[
+    ...state.orders.filter(x=>x.id!==createdOrder.id),
+    createdOrder
+  ];
+}
 
-      if(cashError){
         state.devices=[...state.devices.filter(x=>x.id!==d.id),d];
         state.orders=[...state.orders.filter(x=>x.id!==createdOrder.id),createdOrder];
         saveCache();
