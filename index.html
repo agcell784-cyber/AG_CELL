@@ -69,7 +69,14 @@ $("main").innerHTML=`<h2>Panel</h2><div class="grid"><div class="card stat"><sma
 <div class="two"><div class="card"><h3>Estado de sincronización</h3><p class="ok">● ${state.cloud?"Conectado a Supabase":"Modo local"}</p><p class="small muted">La información se guarda en la nube cuando hay sesión y conexión.</p></div><div class="card"><h3>Acciones rápidas</h3><div class="actions"><button onclick="newDevice()">+ Recibir equipo</button><button class="ghost" onclick="newCash('income')">+ Ingreso</button><button class="ghost" onclick="newCash('expense')">+ Gasto</button></div></div></div>`}
 function devicesView(){const q=prompt?null:null;$("main").innerHTML=`<div class="card"><div style="display:flex;gap:8px;align-items:center"><h2 style="margin:0">Equipos / Recepción</h2><button class="right" onclick="newDevice()">+ Recibir equipo</button></div><label>Buscar</label><input id="deviceSearch" oninput="listDevices()" placeholder="Cliente, teléfono, modelo, IMEI..."></div><div id="deviceList"></div>`;listDevices()}
 function listDevices(){const q=($("deviceSearch")?.value||"").toLowerCase();const arr=state.devices.filter(d=>[d.customer_name,d.customer_phone,d.model,d.imei].join(" ").toLowerCase().includes(q));$("deviceList").innerHTML=arr.map(d=>`<div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><div><h3>${esc(d.customer_name)} — ${esc(d.model)}</h3><p class="muted">${esc(d.imei||"Sin IMEI")} · ${esc(d.customer_phone||"Sin teléfono")}</p></div><span class="badge">${esc(d.lock_type||"Ninguno")}</span></div><p><b>Trabajo:</b> ${esc(d.work)}</p><p><b>Estado físico:</b> ${esc(d.condition)}</p><div class="photos">${state.photos.filter(x=>x.device_id===d.id).map(x=>`<img src="${esc(x.url)}" title="${esc(x.caption)}">`).join("")}</div><div class="actions"><button onclick="editDevice('${d.id}')">Editar</button><button class="ghost" onclick="showSecret('${d.id}')">Ver acceso</button><button class="ghost" onclick="photoInput('${d.id}')">Agregar fotos</button><button class="good" onclick="whatsAppCustomer('${d.id}','recibido')">WhatsApp</button><button class="danger" onclick="deleteDevice('${d.id}')">Eliminar</button></div></div>`).join("")||`<div class="card"><p class="muted">No hay equipos registrados.</p></div>`}
-
+function editDevice(id){
+  const device = state.devices.find(x => x.id === id);
+  if(!device){
+    toast("No se encontró el equipo", true);
+    return;
+  }
+  deviceForm(device);
+}
 function deviceForm(d={}){
   return `<div class="card">
     <h2>${d.id?"Editar":"Recibir"} equipo</h2>
