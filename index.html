@@ -428,7 +428,30 @@ async function loadCloud(){if(!state.session)return;const uid=state.session.user
 if(state.profile?.logo_path){const signedLogo=await sb.storage.from("agcell-photos").createSignedUrl(state.profile.logo_path,60*60*24*7);state.profile.logo_url=signedLogo.data?.signedUrl||""}
 state.devices=d.data||[];state.orders=o.data||[];state.cash=c.data||[];state.inventory=inv.error?[]:(inv.data||[]);state.photos=[];for(const x of (ph.data||[])){const signed=await sb.storage.from("agcell-photos").createSignedUrl(x.storage_path,3600);state.photos.push({...x,url:signed.data?.signedUrl||""})}saveCache()}
 async function signOut(){await sb.auth.signOut();sessionStorage.removeItem("agcell_unlocked");location.reload()}
-async function boot(){loadCache();const {data}=await sb.auth.getSession();state.session=data.session;if(!state.session){showAuth();return}if(locked()){render();return}await loadCloud();render()}
+async function boot(){
+  loadCache();
+
+  if(location.hash.includes("type=recovery")){
+    showResetPassword();
+    return;
+  }
+
+  const {data}=await sb.auth.getSession();
+  state.session=data.session;
+
+  if(!state.session){
+    showAuth();
+    return;
+  }
+
+  if(locked()){
+    render();
+    return;
+  }
+
+  await loadCloud();
+  render();
+}
 function showAuth(){document.getElementById("app").innerHTML=`<div class="login"><div class="box card"><h1>AG_CELL</h1><p>Servicio Técnico</p><p><b>La tecnología merece una segunda oportunidad</b></p><p>Conecta tu cuenta para sincronizar entre celular y computador.</p><label>Correo</label><input id="auth_email" type="email" placeholder="tu-correo@ejemplo.com"><label>Contraseña</label><input id="auth_pass" type="password" placeholder="Mínimo 6 caracteres"><div class="actions"><button onclick="authLogin()">Entrar</button><button class="ghost" onclick="authSignup()">Crear cuenta</button></div><p class="small muted">Si acabas de crear la cuenta, Supabase puede pedir confirmación del correo según la configuración del proyecto.</p></div></div>`}
 async function authLogin(){const {data,error}=await sb.auth.signInWithPassword({email:$("auth_email").value.trim(),password:$("auth_pass").value});if(error){toast(error.message,true);return}state.session=data.session;state.cryptoKey=await deriveKey($("auth_pass").value);await ensurePin();await loadCloud();render()}
 async function authSignup(){const email=$("auth_email").value.trim(),password=$("auth_pass").value;if(!email||password.length<6){toast("Correo y contraseña válida son obligatorios",true);return}const {data,error}=await sb.auth.signUp({email,password});if(error){toast(error.message,true);return}if(data.session){state.session=data.session;state.cryptoKey=await deriveKey(password);await ensurePin();await loadCloud();render()}else toast("Cuenta creada. Revisa tu correo para confirmar y luego entra.")}
