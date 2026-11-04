@@ -82,13 +82,7 @@ function editDevice(id) {
   window.scrollTo(0, 0);
 }
 
-  const device = state.devices.find(x => x.id === id);
-  if(!device){
-    toast("No se encontró el equipo", true);
-    return;
-  }
-  deviceForm(device);
-}
+  
 function deviceForm(d={}){
   return `<div class="card">
     <h2>${d.id?"Editar":"Recibir"} equipo</h2>
