@@ -67,7 +67,52 @@ if(state.tab==="inicio")home();if(state.tab==="equipos")devicesView();if(state.t
 function home(){const inc=state.cash.filter(x=>x.type==="income").reduce((a,x)=>a+Number(x.value),0),exp=state.cash.filter(x=>x.type==="expense").reduce((a,x)=>a+Number(x.value),0),active=state.orders.filter(x=>!["Entregado","Cancelado"].includes(x.status)).length;
 $("main").innerHTML=`<h2>Panel</h2><div class="grid"><div class="card stat"><small>Ingresos</small><b>${money(inc)}</b></div><div class="card stat"><small>Gastos</small><b>${money(exp)}</b></div><div class="card stat"><small>Balance</small><b>${money(inc-exp)}</b></div><div class="card stat"><small>Órdenes activas</small><b>${active}</b></div></div>
 <div class="two"><div class="card"><h3>Estado de sincronización</h3><p class="ok">● ${state.cloud?"Conectado a Supabase":"Modo local"}</p><p class="small muted">La información se guarda en la nube cuando hay sesión y conexión.</p></div><div class="card"><h3>Acciones rápidas</h3><div class="actions"><button onclick="newDevice()">+ Recibir equipo</button><button class="ghost" onclick="newCash('income')">+ Ingreso</button><button class="ghost" onclick="newCash('expense')">+ Gasto</button></div></div></div>`}
-function devicesView(){const q=prompt?null:null;$("main").innerHTML=`<div class="card"><div style="display:flex;gap:8px;align-items:center"><h2 style="margin:0">Equipos / Recepción</h2><button class="right" onclick="newDevice()">+ Recibir equipo</button></div><label>Buscar</label><input id="deviceSearch" oninput="listDevices()" placeholder="Cliente, teléfono, modelo, IMEI..."></div><div id="deviceList"></div>`;listDevices()}
+async function newCash(type){
+  const tipo=type==="income"?"Ingreso":"Gasto";
+
+  const valor=prompt("Valor del "+tipo+":");
+  if(valor===null)return;
+
+  const amount=Number(valor.replace(/\./g,"").replace(/,/g,""));
+  if(!amount||amount<=0){
+    toast("Ingresa un valor válido",true);
+    return;
+  }
+
+  const method=prompt("Método de pago (Efectivo, Nequi, Bancolombia, etc.):");
+  if(method===null)return;
+
+  const concept=prompt("Concepto del "+tipo+":");
+  if(concept===null)return;
+
+  const rec={
+    id:crypto.randomUUID(),
+    user_id:state.session.user.id,
+    device_id:null,
+    type:type,
+    value:amount,
+    method:method.trim(),
+    concept:concept.trim(),
+    created_at:new Date().toISOString()
+  };
+
+  const {data,error}=await sb
+    .from("cash_entries")
+    .insert(rec)
+    .select()
+    .single();
+
+  if(error){
+    toast("No se pudo guardar: "+error.message,true);
+    return;
+  }
+
+  state.cash.unshift(data);
+  saveCache();
+  cashView();
+  toast(tipo+" registrado correctamente");
+}
+  function devicesView(){const q=prompt?null:null;$("main").innerHTML=`<div class="card"><div style="display:flex;gap:8px;align-items:center"><h2 style="margin:0">Equipos / Recepción</h2><button class="right" onclick="newDevice()">+ Recibir equipo</button></div><label>Buscar</label><input id="deviceSearch" oninput="listDevices()" placeholder="Cliente, teléfono, modelo, IMEI..."></div><div id="deviceList"></div>`;listDevices()}
 
 function editDevice(id) {
   const device = state.devices.find(x => x.id === id);
