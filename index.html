@@ -282,6 +282,58 @@ async function saveDevice(id) {
     return;
   }
 
+   const {error: oldCostsError}=await sb.from("repair_cost_items")
+    .delete()
+    .eq("device_id",d.id)
+    .eq("user_id",state.session.user.id);
+
+  if(oldCostsError){
+    toast("No se pudieron actualizar los costos: "+oldCostsError.message,true);
+    return;
+  }
+
+  const costRows=[];
+
+  if(partsCost>0){
+    costRows.push({
+      id:crypto.randomUUID(),
+      user_id:state.session.user.id,
+      device_id:d.id,
+      description:"Repuestos",
+      quantity:1,
+      unit_cost:partsCost
+    });
+  }
+
+  if(otherCost>0){
+    costRows.push({
+      id:crypto.randomUUID(),
+      user_id:state.session.user.id,
+      device_id:d.id,
+      description:"Otros costos",
+      quantity:1,
+      unit_cost:otherCost
+    });
+  }
+
+  if(costRows.length){
+    const {data:savedCosts,error:costError}=await sb
+      .from("repair_cost_items")
+      .insert(costRows)
+      .select();
+
+    if(costError){
+      toast("Equipo guardado, pero fallaron los costos: "+costError.message,true);
+      return;
+    }
+
+    state.repairCosts=[
+      ...(state.repairCosts||[]).filter(x=>x.device_id!==d.id),
+      ...(savedCosts||[])
+    ];
+  }else{
+    state.repairCosts=(state.repairCosts||[]).filter(x=>x.device_id!==d.id);
+  }
   state.devices = [
     ...state.devices.filter(x => x.id !== d.id),
     d
