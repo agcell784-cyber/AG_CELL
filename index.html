@@ -44,7 +44,7 @@ const SUPABASE_URL="https://fuxejnekvmxzvanklqok.supabase.co";
 const SUPABASE_KEY="sb_publishable_NIOO0ix0-oHona8uaTQhFg_vxuoKMMG";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const STORE="agcell_v9_cache", PINKEY="agcell_v9_pin", ENC_SALT="agcell-v9-secret-v1";
-let state={tab:"inicio",profile:null,devices:[],orders:[],cash:[],photos:[],inventory:[],session:null,cryptoKey:null,cloud:true};
+let state={tab:"inicio",profile:null,devices:[],orders:[],cash:[],photos:[],inventory:[],repairCosts:[],session:null,cryptoKey:null,cloud:true};
 const $=id=>document.getElementById(id);
 function toast(s,err=false){const t=$("toast");t.textContent=s;t.className="toast";if(err)t.style.background="#b91c1c";else t.style.background="#111827";clearTimeout(window._tt);window._tt=setTimeout(()=>t.className="toast hidden",3000)}
 function money(n){return new Intl.NumberFormat("es-CO",{style:"currency",currency:"COP",maximumFractionDigits:0}).format(Number(n)||0)}
