@@ -113,7 +113,35 @@ async function newCash(type){
   toast(tipo+" registrado correctamente");
 }
   function devicesView(){const q=prompt?null:null;$("main").innerHTML=`<div class="card"><div style="display:flex;gap:8px;align-items:center"><h2 style="margin:0">Equipos / Recepción</h2><button class="right" onclick="newDevice()">+ Recibir equipo</button></div><label>Buscar</label><input id="deviceSearch" oninput="listDevices()" placeholder="Cliente, teléfono, modelo, IMEI..."></div><div id="deviceList"></div>`;listDevices()}
+function listDevices(){
+  const q=($("deviceSearch")?.value||"").toLowerCase().trim();
 
+  const items=(state.devices||[]).filter(d=>
+    [d.customer_name,d.customer_phone,d.model,d.imei]
+      .some(v=>String(v||"").toLowerCase().includes(q))
+  );
+
+  $("deviceList").innerHTML=items.map(d=>{
+    const photos=(state.photos||[]).filter(p=>p.device_id===d.id);
+
+    return `
+      <div class="card">
+        <h3>${esc(d.customer_name||"Sin nombre")}</h3>
+        <p><b>Equipo:</b> ${esc(d.model||"")}</p>
+        <p><b>Teléfono:</b> ${esc(d.customer_phone||"—")}</p>
+        <p><b>IMEI:</b> ${esc(d.imei||"—")}</p>
+        <p><b>Trabajo:</b> ${esc(d.work||"—")}</p>
+        <p><b>Precio:</b> ${money(d.total||0)}</p>
+        <p><b>Abono:</b> ${money(d.deposit||0)}</p>
+        <div class="actions">
+          <button onclick="editDevice('${d.id}')">Editar</button>
+          <button onclick="photoInput('${d.id}')">Agregar fotos</button>
+          <button class="danger" onclick="deleteDevice('${d.id}')">Eliminar</button>
+        </div>
+        ${photos.map(p=>p.url?`<img src="${esc(p.url)}" style="width:75px;height:75px;object-fit:cover;border-radius:8px;margin:5px">`:"").join("")}
+      </div>`;
+  }).join("")||'<div class="card">No hay equipos registrados.</div>';
+}
 function editDevice(id) {
   const device = state.devices.find(x => x.id === id);
   if (!device) {
