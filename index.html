@@ -571,6 +571,29 @@ function ordersView(){
 
   state.cash.unshift(savedMovement);
 
+  const {data:updatedDevice,error:deviceError}=await sb
+    .from("devices")
+    .update({
+      deposit:nuevoDeposit,
+      updated_at:new Date().toISOString()
+    })
+    .eq("id",order.device_id)
+    .eq("user_id",state.session.user.id)
+    .select()
+    .single();
+
+  if(deviceError){
+    saveCache();
+    ordersView();
+    toast("Pago registrado, pero no se actualizó el equipo: "+deviceError.message,true);
+    return;
+  }
+
+  state.devices=[
+    ...state.devices.filter(x=>x.id!==order.device_id),
+    updatedDevice
+  ];
+
   saveCache();
   ordersView();
 
