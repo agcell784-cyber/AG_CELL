@@ -176,6 +176,8 @@ function deviceForm(d={}){
       <div class="full"><label>PIN, patrón o contraseña del equipo (solo con autorización del cliente)</label><input id="f_secret" type="password" autocomplete="off" placeholder="PIN o contraseña; para patrón, dibújalo abajo"><div id="patternWrap" class="hidden"><label>Dibuja el patrón uniendo los puntos</label><canvas id="patternCanvas" width="300" height="300" style="width:min(100%,300px);height:auto;border:1px solid #d1d5db;border-radius:14px;background:#f9fafb;touch-action:none"></canvas><div class="actions"><button type="button" class="ghost" onclick="clearPattern()">Borrar patrón</button></div><p class="small muted">Se guarda cifrado. Pide permiso al cliente y elimina el acceso cuando ya no sea necesario.</p></div></div>
       <div><label>Precio del trabajo (COP)</label><input id="f_price" type="number" min="0" value="${d.total??0}"></div>
       <div><label>Abono recibido (COP)</label><input id="f_deposit" type="number" min="0" value="${d.deposit??0}"></div>
+      <div><label>Costo de repuestos (COP)</label><input id="f_parts_cost" type="number" min="0" value="${d.id ? (state.repairCosts||[]).filter(x=>x.device_id===d.id && x.description==="Repuestos").reduce((a,x)=>a+Number(x.quantity)*Number(x.unit_cost),0) : 0}"></div>
+<div><label>Otros costos (COP)</label><input id="f_other_cost" type="number" min="0" value="${d.id ? (state.repairCosts||[]).filter(x=>x.device_id===d.id && x.description==="Otros costos").reduce((a,x)=>a+Number(x.quantity)*Number(x.unit_cost),0) : 0}"></div>
     </div>
     <div class="actions">
       <button onclick="saveDevice('${d.id||""}')">Guardar equipo</button>
@@ -230,7 +232,13 @@ async function saveDevice(id) {
   const depositInput = $("f_deposit");
   const total = priceInput ? Number(priceInput.value || 0) : 0;
   const deposit = depositInput ? Number(depositInput.value || 0) : 0;
+  const partsCost = Number($("f_parts_cost")?.value || 0);
+  const otherCost = Number($("f_other_cost")?.value || 0);
 
+  if (partsCost < 0 || otherCost < 0) {
+    toast("Los costos no pueden ser negativos", true);
+    return;
+  }
   if (total < 0 || deposit < 0 || deposit > total) {
     toast("Revisa el precio y el abono: el abono no puede superar el precio", true);
     return;
@@ -497,9 +505,9 @@ function previewLogo(){const file=$("p_logo_file")?.files?.[0];if(!file)return;c
 async function changePin(){const old=prompt("PIN actual");if(await hashPin(old||"")!==localStorage.getItem(PINKEY)){toast("PIN actual incorrecto",true);return}const p=prompt("Nuevo PIN (4 a 8 dígitos)");if(!validPin(p||"")){toast("PIN inválido",true);return}localStorage.setItem(PINKEY,await hashPin(p));toast("PIN cambiado")}
 function photoInput(deviceId){const i=document.createElement("input");i.type="file";i.accept="image/*";i.multiple=true;i.onchange=()=>uploadPhotos(deviceId,[...i.files]);i.click()}
 async function uploadPhotos(deviceId,files){for(const file of files.slice(0,8)){if(file.size>3*1024*1024){toast("Una foto supera 3 MB",true);continue}const path=`${state.session.user.id}/${deviceId}/${crypto.randomUUID()}.${(file.name.split(".").pop()||"jpg").toLowerCase()}`;const {error}=await sb.storage.from("agcell-photos").upload(path,file,{upsert:false});if(error){toast(error.message,true);continue}const rec={id:crypto.randomUUID(),user_id:state.session.user.id,device_id:deviceId,storage_path:path,caption:"",created_at:new Date().toISOString(),url:""};const {error:e}=await sb.from("device_photos").insert({id:rec.id,user_id:rec.user_id,device_id:rec.device_id,storage_path:rec.storage_path,caption:""});if(e){toast(e.message,true);continue}const signed=await sb.storage.from("agcell-photos").createSignedUrl(path,3600);rec.url=signed.data?.signedUrl||"";state.photos.push(rec)}saveCache();listDevices();toast("Fotos subidas")}
-async function loadCloud(){if(!state.session)return;const uid=state.session.user.id;const [p,d,o,c,ph,inv]=await Promise.all([sb.from("business_profile").select("*").eq("user_id",uid).maybeSingle(),sb.from("devices").select("*").eq("user_id",uid).order("updated_at",{ascending:false}),sb.from("orders").select("*").eq("user_id",uid).order("updated_at",{ascending:false}),sb.from("cash_entries").select("*").eq("user_id",uid).order("created_at",{ascending:false}),sb.from("device_photos").select("*").eq("user_id",uid).order("created_at",{ascending:false}),sb.from("inventory_items").select("*").eq("user_id",uid).order("updated_at",{ascending:false})]);for(const x of [p,d,o,c,ph])if(x.error){toast(x.error.message,true);return}if(inv.error && !/inventory_items|does not exist|schema cache/i.test(inv.error.message)){toast(inv.error.message,true);return}state.profile=p.data;
+async function loadCloud(){if(!state.session)return;const uid=state.session.user.id;const [p,d,o,c,ph,inv,rc]=await Promise.all([sb.from("business_profile").select("*").eq("user_id",uid).maybeSingle(),sb.from("devices").select("*").eq("user_id",uid).order("updated_at",{ascending:false}),sb.from("repair_cost_items").select("*").eq("user_id",uid).order("created_at",{ascending:false}),sb.from("orders").select("*").eq("user_id",uid).order("updated_at",{ascending:false}),sb.from("cash_entries").select("*").eq("user_id",uid).order("created_at",{ascending:false}),sb.from("device_photos").select("*").eq("user_id",uid).order("created_at",{ascending:false}),sb.from("inventory_items").select("*").eq("user_id",uid).order("updated_at",{ascending:false})]);for(const x of [p,d,o,c,ph])if(x.error){toast(x.error.message,true);return}if(inv.error && !/inventory_items|does not exist|schema cache/i.test(inv.error.message)){toast(inv.error.message,true);return}state.profile=p.data;
 if(state.profile?.logo_path){const signedLogo=await sb.storage.from("agcell-photos").createSignedUrl(state.profile.logo_path,60*60*24*7);state.profile.logo_url=signedLogo.data?.signedUrl||""}
-state.devices=d.data||[];state.orders=o.data||[];state.cash=c.data||[];state.inventory=inv.error?[]:(inv.data||[]);state.photos=[];for(const x of (ph.data||[])){const signed=await sb.storage.from("agcell-photos").createSignedUrl(x.storage_path,3600);state.photos.push({...x,url:signed.data?.signedUrl||""})}saveCache()}
+state.devices=d.data||[];state.orders=o.data||[];state.cash=c.data||[];state.inventory=inv.error?[]:(inv.data||[]);state.repairCosts=rc.error?[]:(rc.data||[]);state.photos=[];for(const x of (ph.data||[])){const signed=await sb.storage.from("agcell-photos").createSignedUrl(x.storage_path,3600);state.photos.push({...x,url:signed.data?.signedUrl||""})}saveCache()}
 async function signOut(){await sb.auth.signOut();sessionStorage.removeItem("agcell_unlocked");location.reload()}
 async function boot(){
   loadCache();
