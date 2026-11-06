@@ -459,11 +459,39 @@ async function encryptSecret(s){if(!state.cryptoKey)return null;const iv=crypto.
 async function decryptSecret(v){try{if(!state.cryptoKey)return null;const x=JSON.parse(v);const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:ub64(x.iv)},state.cryptoKey,ub64(x.ct));return new TextDecoder().decode(pt)}catch{return null}}
 function b64(a){return btoa(String.fromCharCode(...a))}function ub64(s){return Uint8Array.from(atob(s),c=>c.charCodeAt(0))}
 async function deriveKey(password){const base=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveKey"]);return crypto.subtle.deriveKey({name:"PBKDF2",salt:new TextEncoder().encode(ENC_SALT),iterations:150000,hash:"SHA-256"},base,{name:"AES-GCM",length:256},false,["encrypt","decrypt"])}
-<td>
-<button onclick="editOrder('${o.id}')">Editar</button>
-<button onclick="registrarPago('${o.id}')">💰 Pago</button>
-<button class="good" onclick="whatsAppCustomer('${o.device_id}','${o.status==="Listo"||o.status==="Entregado"?"listo":"recibido"}')">WhatsApp</button>
-</td>
+function ordersView(){
+  const rows=state.orders.map(o=>{
+    const d=state.devices.find(x=>x.id===o.device_id)||{};
+    return `<tr>
+      <td>#${o.number||"—"}</td>
+      <td>${esc(d.customer_name||"—")}<br>${esc(d.model||"")}</td>
+      <td>${esc(o.status)}</td>
+      <td>${money(o.total)}</td>
+      <td>${money(o.deposit)}</td>
+      <td>${money(Number(o.total)-Number(o.deposit))}</td>
+      <td>
+        <button onclick="editOrder('${o.id}')">Editar</button>
+        <button onclick="registrarPago('${o.id}')">💰 Pago</button>
+        <button class="good" onclick="whatsAppCustomer('${o.device_id}','${o.status==="Listo"||o.status==="Entregado"?"listo":"recibido"}')">WhatsApp</button>
+      </td>
+    </tr>`;
+  }).join("");
+
+  $("main").innerHTML=`<div class="card">
+    <div style="display:flex;align-items:center">
+      <h2>Órdenes</h2>
+      <button class="right" onclick="newOrder()">+ Nueva orden</button>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>N°</th><th>Equipo</th><th>Estado</th><th>Total</th><th>Abono</th><th>Saldo</th><th>Acciones</th></tr>
+        </thead>
+        <tbody>${rows||"<tr><td colspan=7>No hay órdenes.</td></tr>"}</tbody>
+      </table>
+    </div>
+  </div>`;
+}async function registrarPago(orderId){
   const order=state.orders.find(x=>x.id===orderId);
 
   if(!order){
