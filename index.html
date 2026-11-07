@@ -472,6 +472,7 @@ function ordersView(){
       <td>
         <button onclick="editOrder('${o.id}')">Editar</button>
         <button onclick="registrarPago('${o.id}')">💰 Pago</button>
+       <button onclick="imprimirOrden('${o.id}')">🖨️ Imprimir</button>
         ${o.status==="Recibido"?`<button onclick="cambiarEstadoOrden('${o.id}','En reparación')">🔧 En reparación</button>`:o.status==="En reparación"?`<button onclick="cambiarEstadoOrden('${o.id}','Listo')">✅ Listo</button>`:o.status==="Listo"?`<button onclick="cambiarEstadoOrden('${o.id}','Entregado')">📦 Entregado</button>`:""}
         <button class="good" onclick="whatsAppCustomer('${o.device_id}','${o.status==="Listo"||o.status==="Entregado"?"listo":"recibido"}')">WhatsApp</button>
       </td>
@@ -634,6 +635,161 @@ async function cambiarEstadoOrden(orderId,nuevoEstado){
   ordersView();
 
   toast("Estado cambiado a: "+nuevoEstado);
+}
+ function imprimirOrden(orderId){
+  const order=state.orders.find(x=>x.id===orderId);
+
+  if(!order){
+    toast("No se encontró la orden",true);
+    return;
+  }
+
+  const d=state.devices.find(x=>x.id===order.device_id)||{};
+  const p=state.profile||{};
+
+  const fecha=new Date(order.received_at||Date.now()).toLocaleDateString("es-CO");
+
+  const saldo=Math.max(0,Number(order.total||0)-Number(order.deposit||0));
+
+  const w=window.open("","_blank","width=800,height=900");
+
+  if(!w){
+    toast("El navegador bloqueó la ventana de impresión",true);
+    return;
+  }
+
+  w.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Orden de servicio #${esc(order.number||"—")}</title>
+      <style>
+        body{
+          font-family:Arial,sans-serif;
+          max-width:760px;
+          margin:30px auto;
+          padding:20px;
+          color:#111;
+        }
+        .header{
+          text-align:center;
+          border-bottom:2px solid #111;
+          padding-bottom:15px;
+          margin-bottom:20px;
+        }
+        h1{margin:0 0 5px}
+        h2{margin-top:25px;border-bottom:1px solid #ccc;padding-bottom:6px}
+        .row{
+          display:flex;
+          justify-content:space-between;
+          gap:20px;
+          padding:6px 0;
+        }
+        .label{font-weight:bold}
+        .box{
+          border:1px solid #ccc;
+          padding:12px;
+          border-radius:6px;
+          margin-bottom:15px;
+        }
+        .total{
+          font-size:18px;
+          font-weight:bold;
+        }
+        .footer{
+          margin-top:40px;
+          text-align:center;
+          font-size:12px;
+          color:#666;
+        }
+        @media print{
+          body{margin:0;max-width:none}
+        }
+      </style>
+    </head>
+    <body>
+
+      <div class="header">
+        <h1>${esc(p.shop_name||"AG_CELL")}</h1>
+        <div>${esc(p.subtitle||"Servicio Técnico de Celulares")}</div>
+        ${p.phone?`<div>Tel: ${esc(p.phone)}</div>`:""}
+        ${p.address?`<div>${esc(p.address)}</div>`:""}
+        <h2>ORDEN DE SERVICIO #${esc(order.number||"—")}</h2>
+        <div>Fecha: ${fecha}</div>
+      </div>
+
+      <div class="box">
+        <h2>Cliente</h2>
+        <div class="row">
+          <span class="label">Nombre:</span>
+          <span>${esc(d.customer_name||"—")}</span>
+        </div>
+        <div class="row">
+          <span class="label">Teléfono:</span>
+          <span>${esc(d.customer_phone||"—")}</span>
+        </div>
+      </div>
+
+      <div class="box">
+        <h2>Equipo</h2>
+        <div class="row">
+          <span class="label">Modelo:</span>
+          <span>${esc(d.model||"—")}</span>
+        </div>
+        <div class="row">
+          <span class="label">IMEI:</span>
+          <span>${esc(d.imei||"—")}</span>
+        </div>
+        <div class="row">
+          <span class="label">Trabajo:</span>
+          <span>${esc(order.work||d.work||"—")}</span>
+        </div>
+        <div class="row">
+          <span class="label">Estado:</span>
+          <span>${esc(order.status||"—")}</span>
+        </div>
+      </div>
+
+      <div class="box">
+        <h2>Valores</h2>
+        <div class="row">
+          <span class="label">Precio:</span>
+          <span>${money(order.total||0)}</span>
+        </div>
+        <div class="row">
+          <span class="label">Abono:</span>
+          <span>${money(order.deposit||0)}</span>
+        </div>
+        <div class="row total">
+          <span>Saldo pendiente:</span>
+          <span>${money(saldo)}</span>
+        </div>
+      </div>
+
+      ${order.notes?`
+        <div class="box">
+          <h2>Notas</h2>
+          <div>${esc(order.notes)}</div>
+        </div>
+      `:""}
+
+      <div class="footer">
+        ${esc(p.shop_name||"AG_CELL")} · ${esc(p.subtitle||"Servicio Técnico")}
+        <br>
+        La tecnología merece una segunda oportunidad
+      </div>
+
+    </body>
+    </html>
+  `);
+
+  w.document.close();
+  w.focus();
+
+  setTimeout(()=>{
+    w.print();
+  },300);
 }
   function newOrder(){if(!state.devices.length){toast("Primero recibe un equipo",true);newDevice();return}state.tab="ordenes";$("main").innerHTML=orderForm()}
 function editOrder(id){state.tab="ordenes";$("main").innerHTML=orderForm(state.orders.find(x=>x.id===id)||{})}
