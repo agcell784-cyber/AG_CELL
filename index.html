@@ -711,6 +711,7 @@ async function cambiarEstadoOrden(orderId,nuevoEstado){
     <body>
 
       <div class="header">
+        ${p.logo_url?`<img src="${esc(p.logo_url)}" style="width:110px;height:110px;object-fit:contain;margin-bottom:8px">`:""}
         <h1>${esc(p.shop_name||"AG_CELL")}</h1>
         <div>${esc(p.subtitle||"Servicio Técnico de Celulares")}</div>
         ${p.phone?`<div>Tel: ${esc(p.phone)}</div>`:""}
