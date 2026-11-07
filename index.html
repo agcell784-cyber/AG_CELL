@@ -636,7 +636,7 @@ async function cambiarEstadoOrden(orderId,nuevoEstado){
 
   toast("Estado cambiado a: "+nuevoEstado);
 }
- function imprimirOrden(orderId){
+function imprimirOrden(orderId){
   const order=state.orders.find(x=>x.id===orderId);
 
   if(!order){
@@ -647,140 +647,509 @@ async function cambiarEstadoOrden(orderId,nuevoEstado){
   const d=state.devices.find(x=>x.id===order.device_id)||{};
   const p=state.profile||{};
 
-  const fecha=new Date(order.received_at||Date.now()).toLocaleDateString("es-CO");
+  const opcion=prompt(
+    "IMPRIMIR ORDEN DE SERVICIO\n\n"+
+    "1. Hoja normal — COLOR\n"+
+    "2. Hoja normal — BLANCO Y NEGRO\n"+
+    "3. Térmica 58 mm — COLOR\n"+
+    "4. Térmica 58 mm — BLANCO Y NEGRO\n"+
+    "5. Térmica 80 mm — COLOR\n"+
+    "6. Térmica 80 mm — BLANCO Y NEGRO\n\n"+
+    "Escribe el número de la opción:"
+  );
 
-  const saldo=Math.max(0,Number(order.total||0)-Number(order.deposit||0));
+  if(!opcion)return;
 
-  const w=window.open("","_blank","width=800,height=900");
+  const opciones={
+    "1":{tipo:"normal",bw:false},
+    "2":{tipo:"normal",bw:true},
+    "3":{tipo:"58",bw:false},
+    "4":{tipo:"58",bw:true},
+    "5":{tipo:"80",bw:false},
+    "6":{tipo:"80",bw:true}
+  };
+
+  const seleccion=opciones[String(opcion).trim()];
+
+  if(!seleccion){
+    toast("Opción no válida",true);
+    return;
+  }
+
+  const tipo=seleccion.tipo;
+  const bw=seleccion.bw;
+
+  const fecha=new Date(
+    order.received_at||Date.now()
+  ).toLocaleDateString("es-CO");
+
+  const saldo=Math.max(
+    0,
+    Number(order.total||0)-Number(order.deposit||0)
+  );
+
+  const ancho=
+    tipo==="58" ? "58mm" :
+    tipo==="80" ? "80mm" :
+    "210mm";
+
+  const accent=bw ? "#111" : "#f28c00";
+  const accentSoft=bw ? "#f2f2f2" : "#fff3e6";
+  const border=bw ? "#222" : "#d8d8d8";
+
+  const logoHtml=p.logo_url
+    ? `<img class="logo" src="${esc(p.logo_url)}" alt="AG_CELL">`
+    : "";
+
+  const telefono=p.phone
+    ? `<div class="small">Tel: ${esc(p.phone)}</div>`
+    : "";
+
+  const direccion=p.address
+    ? `<div class="small">${esc(p.address)}</div>`
+    : "";
+
+  const trabajo=order.work||d.work||"—";
+
+  const w=window.open(
+    "",
+    "_blank",
+    tipo==="normal"
+      ? "width=900,height=1000"
+      : "width=500,height=900"
+  );
 
   if(!w){
     toast("El navegador bloqueó la ventana de impresión",true);
     return;
   }
 
+  const esTermica=tipo==="58"||tipo==="80";
+
   w.document.write(`
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="UTF-8">
-      <title>Orden de servicio #${esc(order.number||"—")}</title>
+      <title>AG_CELL - Orden #${esc(order.number||"—")}</title>
+
       <style>
-        body{
-          font-family:Arial,sans-serif;
-          max-width:760px;
-          margin:30px auto;
-          padding:20px;
-          color:#111;
+
+        @page{
+          ${
+            tipo==="normal"
+              ? "size:A4 auto;margin:12mm;"
+              : `size:${ancho} auto;margin:3mm;`
+          }
         }
+
+        *{
+          box-sizing:border-box;
+        }
+
+        html,body{
+          margin:0;
+          padding:0;
+        }
+
+        body{
+          font-family:Arial,Helvetica,sans-serif;
+          color:#111;
+          background:#fff;
+          ${
+            tipo==="normal"
+              ? "max-width:850px;margin:0 auto;padding:20px;"
+              : "width:100%;padding:2px;"
+          }
+          -webkit-print-color-adjust:exact;
+          print-color-adjust:exact;
+        }
+
+        .document{
+          width:100%;
+        }
+
         .header{
           text-align:center;
-          border-bottom:2px solid #111;
-          padding-bottom:15px;
-          margin-bottom:20px;
+          border:2px solid ${accent};
+          border-radius:${esTermica?"0":"10px"};
+          padding:${esTermica?"10px 6px":"18px"};
+          margin-bottom:${esTermica?"10px":"18px"};
         }
-        h1{margin:0 0 5px}
-        h2{margin-top:25px;border-bottom:1px solid #ccc;padding-bottom:6px}
+
+        .logo{
+          width:${esTermica?"72px":"110px"};
+          height:${esTermica?"72px":"110px"};
+          object-fit:contain;
+          display:block;
+          margin:0 auto 8px;
+          ${bw?"filter:grayscale(1);":""}
+        }
+
+        .brand{
+          font-size:${esTermica?"22px":"30px"};
+          font-weight:900;
+          margin:0;
+          letter-spacing:.5px;
+        }
+
+        .subtitle{
+          font-size:${esTermica?"12px":"15px"};
+          font-weight:bold;
+          margin-top:3px;
+        }
+
+        .small{
+          font-size:${esTermica?"10px":"12px"};
+          margin-top:3px;
+        }
+
+        .orderTitle{
+          background:${accent};
+          color:#fff;
+          font-size:${esTermica?"16px":"21px"};
+          font-weight:bold;
+          padding:8px;
+          margin:${esTermica?"10px -6px -10px":"15px -18px -18px"};
+        }
+
+        .section{
+          border:1px solid ${border};
+          border-radius:${esTermica?"0":"8px"};
+          overflow:hidden;
+          margin-bottom:${esTermica?"8px":"14px"};
+        }
+
+        .sectionTitle{
+          background:${accentSoft};
+          border-bottom:1px solid ${border};
+          padding:${esTermica?"6px":"9px 12px"};
+          font-size:${esTermica?"12px":"15px"};
+          font-weight:bold;
+          color:${accent};
+          text-transform:uppercase;
+        }
+
+        .content{
+          padding:${esTermica?"6px":"12px"};
+        }
+
         .row{
           display:flex;
           justify-content:space-between;
-          gap:20px;
-          padding:6px 0;
+          gap:10px;
+          padding:${esTermica?"4px 0":"7px 0"};
+          border-bottom:1px dashed #ddd;
+          font-size:${esTermica?"11px":"14px"};
         }
-        .label{font-weight:bold}
-        .box{
-          border:1px solid #ccc;
-          padding:12px;
-          border-radius:6px;
-          margin-bottom:15px;
+
+        .row:last-child{
+          border-bottom:0;
         }
-        .total{
-          font-size:18px;
+
+        .label{
           font-weight:bold;
         }
+
+        .value{
+          text-align:right;
+          max-width:65%;
+          word-break:break-word;
+        }
+
+        .work{
+          font-size:${esTermica?"12px":"16px"};
+          font-weight:bold;
+          line-height:1.4;
+          padding:${esTermica?"7px":"10px"};
+          background:${accentSoft};
+          border-left:4px solid ${accent};
+        }
+
+        .total{
+          font-size:${esTermica?"14px":"19px"};
+          font-weight:900;
+        }
+
+        .balance{
+          background:${accentSoft};
+          border:2px solid ${accent};
+          padding:${esTermica?"7px":"11px"};
+          margin-top:8px;
+          font-size:${esTermica?"13px":"18px"};
+          font-weight:900;
+          display:flex;
+          justify-content:space-between;
+        }
+
+        .status{
+          display:inline-block;
+          border:1px solid ${accent};
+          padding:4px 8px;
+          font-weight:bold;
+          border-radius:20px;
+          font-size:${esTermica?"10px":"12px"};
+        }
+
         .footer{
-          margin-top:40px;
           text-align:center;
-          font-size:12px;
-          color:#666;
+          margin-top:${esTermica?"12px":"25px"};
+          padding-top:${esTermica?"8px":"12px"};
+          border-top:1px solid #ccc;
+          font-size:${esTermica?"9px":"11px"};
+          line-height:1.5;
         }
+
+        .thanks{
+          font-weight:bold;
+          margin-bottom:3px;
+        }
+
+        ${
+          bw
+            ? `
+              .header,
+              .section,
+              .balance{
+                border-color:#111 !important;
+              }
+
+              .orderTitle{
+                background:#111 !important;
+              }
+
+              .sectionTitle,
+              .work{
+                background:#f2f2f2 !important;
+                color:#111 !important;
+              }
+
+              .logo{
+                filter:grayscale(1) !important;
+              }
+            `
+            : ""
+        }
+
         @media print{
-          body{margin:0;max-width:none}
+          body{
+            ${
+              tipo==="normal"
+                ? "padding:0;"
+                : "padding:0;"
+            }
+          }
+
+          .section,
+          .header,
+          .balance{
+            break-inside:avoid;
+          }
         }
+
       </style>
     </head>
+
     <body>
+      <div class="document">
 
-      <div class="header">
-        ${p.logo_url?`<img src="${esc(p.logo_url)}" style="width:110px;height:110px;object-fit:contain;margin-bottom:8px">`:""}
-        <h1>${esc(p.shop_name||"AG_CELL")}</h1>
-        <div>${esc(p.subtitle||"Servicio Técnico de Celulares")}</div>
-        ${p.phone?`<div>Tel: ${esc(p.phone)}</div>`:""}
-        ${p.address?`<div>${esc(p.address)}</div>`:""}
-        <h2>ORDEN DE SERVICIO #${esc(order.number||"—")}</h2>
-        <div>Fecha: ${fecha}</div>
+        <div class="header">
+
+          ${logoHtml}
+
+          <div class="brand">
+            ${esc(p.shop_name||"AG_CELL")}
+          </div>
+
+          <div class="subtitle">
+            ${esc(p.subtitle||"Servicio Técnico de Celulares")}
+          </div>
+
+          ${telefono}
+          ${direccion}
+
+          <div class="orderTitle">
+            ORDEN DE SERVICIO #${esc(order.number||"—")}
+            <br>
+            <span style="font-size:${esTermica?"10px":"12px"}">
+              Fecha: ${fecha}
+            </span>
+          </div>
+
+        </div>
+
+
+        <div class="section">
+
+          <div class="sectionTitle">
+            👤 Datos del cliente
+          </div>
+
+          <div class="content">
+
+            <div class="row">
+              <span class="label">Nombre</span>
+              <span class="value">
+                ${esc(d.customer_name||"—")}
+              </span>
+            </div>
+
+            <div class="row">
+              <span class="label">Teléfono</span>
+              <span class="value">
+                ${esc(d.customer_phone||"—")}
+              </span>
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="section">
+
+          <div class="sectionTitle">
+            📱 Equipo recibido
+          </div>
+
+          <div class="content">
+
+            <div class="row">
+              <span class="label">Modelo</span>
+              <span class="value">
+                ${esc(d.model||"—")}
+              </span>
+            </div>
+
+            <div class="row">
+              <span class="label">IMEI</span>
+              <span class="value">
+                ${esc(d.imei||"—")}
+              </span>
+            </div>
+
+            ${
+              d.color
+                ? `
+                  <div class="row">
+                    <span class="label">Color</span>
+                    <span class="value">
+                      ${esc(d.color)}
+                    </span>
+                  </div>
+                `
+                : ""
+            }
+
+            <div class="row">
+              <span class="label">Estado</span>
+              <span class="value">
+                <span class="status">
+                  ${esc(order.status||"—")}
+                </span>
+              </span>
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="section">
+
+          <div class="sectionTitle">
+            🔧 Trabajo solicitado
+          </div>
+
+          <div class="content">
+
+            <div class="work">
+              ${esc(trabajo)}
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="section">
+
+          <div class="sectionTitle">
+            💰 Valores
+          </div>
+
+          <div class="content">
+
+            <div class="row">
+              <span class="label">Precio del servicio</span>
+              <span class="value">
+                ${money(order.total||0)}
+              </span>
+            </div>
+
+            <div class="row">
+              <span class="label">Abono recibido</span>
+              <span class="value">
+                ${money(order.deposit||0)}
+              </span>
+            </div>
+
+            <div class="balance">
+              <span>Saldo pendiente</span>
+              <span>${money(saldo)}</span>
+            </div>
+
+          </div>
+
+        </div>
+
+
+        ${
+          order.notes
+            ? `
+              <div class="section">
+
+                <div class="sectionTitle">
+                  📝 Observaciones
+                </div>
+
+                <div class="content">
+
+                  <div style="
+                    font-size:${esTermica?"11px":"14px"};
+                    line-height:1.5;
+                    white-space:pre-wrap;
+                  ">
+                    ${esc(order.notes)}
+                  </div>
+
+                </div>
+
+              </div>
+            `
+            : ""
+        }
+
+
+        <div class="footer">
+
+          <div class="thanks">
+            Gracias por confiar en ${esc(p.shop_name||"AG_CELL")}
+          </div>
+
+          <div>
+            La tecnología merece una segunda oportunidad
+          </div>
+
+          ${
+            p.phone
+              ? `<div>Tel: ${esc(p.phone)}</div>`
+              : ""
+          }
+
+        </div>
+
       </div>
-
-      <div class="box">
-        <h2>Cliente</h2>
-        <div class="row">
-          <span class="label">Nombre:</span>
-          <span>${esc(d.customer_name||"—")}</span>
-        </div>
-        <div class="row">
-          <span class="label">Teléfono:</span>
-          <span>${esc(d.customer_phone||"—")}</span>
-        </div>
-      </div>
-
-      <div class="box">
-        <h2>Equipo</h2>
-        <div class="row">
-          <span class="label">Modelo:</span>
-          <span>${esc(d.model||"—")}</span>
-        </div>
-        <div class="row">
-          <span class="label">IMEI:</span>
-          <span>${esc(d.imei||"—")}</span>
-        </div>
-        <div class="row">
-          <span class="label">Trabajo:</span>
-          <span>${esc(order.work||d.work||"—")}</span>
-        </div>
-        <div class="row">
-          <span class="label">Estado:</span>
-          <span>${esc(order.status||"—")}</span>
-        </div>
-      </div>
-
-      <div class="box">
-        <h2>Valores</h2>
-        <div class="row">
-          <span class="label">Precio:</span>
-          <span>${money(order.total||0)}</span>
-        </div>
-        <div class="row">
-          <span class="label">Abono:</span>
-          <span>${money(order.deposit||0)}</span>
-        </div>
-        <div class="row total">
-          <span>Saldo pendiente:</span>
-          <span>${money(saldo)}</span>
-        </div>
-      </div>
-
-      ${order.notes?`
-        <div class="box">
-          <h2>Notas</h2>
-          <div>${esc(order.notes)}</div>
-        </div>
-      `:""}
-
-      <div class="footer">
-        ${esc(p.shop_name||"AG_CELL")} · ${esc(p.subtitle||"Servicio Técnico")}
-        <br>
-        La tecnología merece una segunda oportunidad
-      </div>
-
     </body>
     </html>
   `);
@@ -788,9 +1157,38 @@ async function cambiarEstadoOrden(orderId,nuevoEstado){
   w.document.close();
   w.focus();
 
-  setTimeout(()=>{
-    w.print();
-  },300);
+  const imprimir=()=>{
+    setTimeout(()=>{
+      w.print();
+    },400);
+  };
+
+  const imagenes=Array.from(w.document.images);
+
+  if(!imagenes.length){
+    imprimir();
+  }else{
+    let pendientes=imagenes.length;
+
+    const listo=()=>{
+      pendientes--;
+
+      if(pendientes<=0){
+        imprimir();
+      }
+    };
+
+    imagenes.forEach(img=>{
+      if(img.complete){
+        listo();
+      }else{
+        img.onload=listo;
+        img.onerror=listo;
+      }
+    });
+
+    setTimeout(imprimir,2000);
+  }
 }
   function newOrder(){if(!state.devices.length){toast("Primero recibe un equipo",true);newDevice();return}state.tab="ordenes";$("main").innerHTML=orderForm()}
 function editOrder(id){state.tab="ordenes";$("main").innerHTML=orderForm(state.orders.find(x=>x.id===id)||{})}
