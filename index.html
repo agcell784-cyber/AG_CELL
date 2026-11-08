@@ -698,9 +698,8 @@ function imprimirOrden(orderId){
   const border=bw ? "#222" : "#d8d8d8";
 
   const logoHtml=p.logo_url
-    ? `<img class="logo" src="${esc(p.logo_url)}" alt="AG_CELL">`
+    ? `<img class="logo" src="${p.logo_url}" alt="AG_CELL">`
     : "";
-
   const telefono=p.phone
     ? `<div class="small">Tel: ${esc(p.phone)}</div>`
     : "";
