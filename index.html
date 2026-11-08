@@ -711,18 +711,18 @@ function imprimirOrden(orderId){
 
   const trabajo=order.work||d.work||"—";
 
-  const w=window.open(
-    "",
-    "_blank",
-    tipo==="normal"
-      ? "width=900,height=1000"
-      : "width=500,height=900"
-  );
+const w=window.open(
+  "",
+  "_blank",
+  "width=900,height=1000"
+);
 
-  if(!w){
-    toast("El navegador bloqueó la ventana de impresión",true);
-    return;
-  }
+if(!w){
+  toast("El navegador bloqueó la ventana de impresión",true);
+  return;
+}
+
+  
 
   const esTermica=tipo==="58"||tipo==="80";
 
