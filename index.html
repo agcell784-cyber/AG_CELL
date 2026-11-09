@@ -637,6 +637,7 @@ async function cambiarEstadoOrden(orderId,nuevoEstado){
   toast("Estado cambiado a: "+nuevoEstado);
 }
 function imprimirOrden(orderId){
+
   const order=state.orders.find(x=>x.id===orderId);
 
   if(!order){
@@ -649,13 +650,13 @@ function imprimirOrden(orderId){
 
   const opcion=prompt(
     "IMPRIMIR ORDEN DE SERVICIO\n\n"+
-    "1. Hoja normal — COLOR\n"+
-    "2. Hoja normal — BLANCO Y NEGRO\n"+
-    "3. Térmica 58 mm — COLOR\n"+
-    "4. Térmica 58 mm — BLANCO Y NEGRO\n"+
-    "5. Térmica 80 mm — COLOR\n"+
-    "6. Térmica 80 mm — BLANCO Y NEGRO\n\n"+
-    "Escribe el número de la opción:"
+    "1. HOJA NORMAL — DISEÑO GRANDE\n"+
+    "2. HOJA NORMAL — BLANCO Y NEGRO\n"+
+    "3. TÉRMICA 80 mm\n"+
+    "4. TÉRMICA 80 mm — BLANCO Y NEGRO\n"+
+    "5. TÉRMICA 58 mm\n"+
+    "6. TÉRMICA 58 mm — BLANCO Y NEGRO\n\n"+
+    "Escribe 1, 2, 3, 4, 5 o 6:"
   );
 
   if(!opcion)return;
@@ -663,10 +664,10 @@ function imprimirOrden(orderId){
   const opciones={
     "1":{tipo:"normal",bw:false},
     "2":{tipo:"normal",bw:true},
-    "3":{tipo:"58",bw:false},
-    "4":{tipo:"58",bw:true},
-    "5":{tipo:"80",bw:false},
-    "6":{tipo:"80",bw:true}
+    "3":{tipo:"80",bw:false},
+    "4":{tipo:"80",bw:true},
+    "5":{tipo:"58",bw:false},
+    "6":{tipo:"58",bw:true}
   };
 
   const seleccion=opciones[String(opcion).trim()];
@@ -683,512 +684,719 @@ function imprimirOrden(orderId){
     order.received_at||Date.now()
   ).toLocaleDateString("es-CO");
 
-  const saldo=Math.max(
-    0,
-    Number(order.total||0)-Number(order.deposit||0)
+  const total=Number(order.total||0);
+  const abono=Number(order.deposit||0);
+  const saldo=Math.max(0,total-abono);
+
+  const logo=p.logo_url
+    ? `<img class="logo" src="${esc(p.logo_url)}">`
+    : "";
+
+  const fotoObj=(state.photos||[]).find(x=>
+    x.device_id===d.id &&
+    (x.url||x.signedUrl||x.photo_url||x.storage_url)
   );
 
-  const ancho=
-    tipo==="58" ? "58mm" :
-    tipo==="80" ? "80mm" :
-    "210mm";
-
-  const accent=bw ? "#111" : "#f28c00";
-  const accentSoft=bw ? "#f2f2f2" : "#fff3e6";
-  const border=bw ? "#222" : "#d8d8d8";
-
-  const logoHtml=p.logo_url
-    ? `<img class="logo" src="${p.logo_url}" alt="AG_CELL">`
+  const fotoUrl=fotoObj
+    ? (fotoObj.url||fotoObj.signedUrl||fotoObj.photo_url||fotoObj.storage_url)
     : "";
+
+  const fotoEquipo=fotoUrl
+    ? `<img class="fotoEquipo" src="${esc(fotoUrl)}">`
+    : "";
+
   const telefono=p.phone
-    ? `<div class="small">Tel: ${esc(p.phone)}</div>`
+    ? `<span>☎ ${esc(p.phone)}</span>`
     : "";
 
   const direccion=p.address
-    ? `<div class="small">${esc(p.address)}</div>`
+    ? `<span>📍 ${esc(p.address)}</span>`
     : "";
 
   const trabajo=order.work||d.work||"—";
 
-const w=window.open(
-  "",
-  "_blank",
-  "width=900,height=1000"
-);
+  const negro="#111";
+  const gris="#f2f2f2";
 
-if(!w){
-  toast("El navegador bloqueó la ventana de impresión",true);
-  return;
-}
+  const acento=bw ? negro : "#f28c00";
+  const fondo=bw ? "#f2f2f2" : "#fff4e8";
 
-  
+  const originalBody=document.body.innerHTML;
+  const originalTitle=document.title;
 
-  const esTermica=tipo==="58"||tipo==="80";
+  const esNormal=tipo==="normal";
+  const es80=tipo==="80";
+  const es58=tipo==="58";
 
-  w.document.write(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <title>AG_CELL - Orden #${esc(order.number||"—")}</title>
+  const nombreTienda=esc(p.shop_name||"AG_CELL");
+  const subtitulo=esc(
+    p.subtitle||"SERVICIO TÉCNICO"
+  );
 
-      <style>
+  let contenido="";
 
-        @page{
-          ${
-            tipo==="normal"
-              ? "size:A4 auto;margin:12mm;"
-              : `size:${ancho} auto;margin:3mm;`
-          }
-        }
+  if(esNormal){
 
-        *{
-          box-sizing:border-box;
-        }
+    contenido=`
+      <div class="hoja">
 
-        html,body{
-          margin:0;
-          padding:0;
-        }
+        <div class="cabecera">
 
-        body{
-          font-family:Arial,Helvetica,sans-serif;
-          color:#111;
-          background:#fff;
-          ${
-            tipo==="normal"
-              ? "max-width:850px;margin:0 auto;padding:20px;"
-              : "width:100%;padding:2px;"
-          }
-          -webkit-print-color-adjust:exact;
-          print-color-adjust:exact;
-        }
+  ${logo}
 
-        .document{
-          width:100%;
-        }
+  <div class="categorias">
+    <div>📱<b>Reparación<br>de Celulares</b></div>
+    <div>📱<b>Cambio de<br>Pantallas</b></div>
+    <div>⚙<b>Software y<br>más...</b></div>
+  </div>
+         
 
-        .header{
-          text-align:center;
-          border:2px solid ${accent};
-          border-radius:${esTermica?"0":"10px"};
-          padding:${esTermica?"10px 6px":"18px"};
-          margin-bottom:${esTermica?"10px":"18px"};
-        }
-
-        .logo{
-          width:${esTermica?"72px":"110px"};
-          height:${esTermica?"72px":"110px"};
-          object-fit:contain;
-          display:block;
-          margin:0 auto 8px;
-          ${bw?"filter:grayscale(1);":""}
-        }
-
-        .brand{
-          font-size:${esTermica?"22px":"30px"};
-          font-weight:900;
-          margin:0;
-          letter-spacing:.5px;
-        }
-
-        .subtitle{
-          font-size:${esTermica?"12px":"15px"};
-          font-weight:bold;
-          margin-top:3px;
-        }
-
-        .small{
-          font-size:${esTermica?"10px":"12px"};
-          margin-top:3px;
-        }
-
-        .orderTitle{
-          background:${accent};
-          color:#fff;
-          font-size:${esTermica?"16px":"21px"};
-          font-weight:bold;
-          padding:8px;
-          margin:${esTermica?"10px -6px -10px":"15px -18px -18px"};
-        }
-
-        .section{
-          border:1px solid ${border};
-          border-radius:${esTermica?"0":"8px"};
-          overflow:hidden;
-          margin-bottom:${esTermica?"8px":"14px"};
-        }
-
-        .sectionTitle{
-          background:${accentSoft};
-          border-bottom:1px solid ${border};
-          padding:${esTermica?"6px":"9px 12px"};
-          font-size:${esTermica?"12px":"15px"};
-          font-weight:bold;
-          color:${accent};
-          text-transform:uppercase;
-        }
-
-        .content{
-          padding:${esTermica?"6px":"12px"};
-        }
-
-        .row{
-          display:flex;
-          justify-content:space-between;
-          gap:10px;
-          padding:${esTermica?"4px 0":"7px 0"};
-          border-bottom:1px dashed #ddd;
-          font-size:${esTermica?"11px":"14px"};
-        }
-
-        .row:last-child{
-          border-bottom:0;
-        }
-
-        .label{
-          font-weight:bold;
-        }
-
-        .value{
-          text-align:right;
-          max-width:65%;
-          word-break:break-word;
-        }
-
-        .work{
-          font-size:${esTermica?"12px":"16px"};
-          font-weight:bold;
-          line-height:1.4;
-          padding:${esTermica?"7px":"10px"};
-          background:${accentSoft};
-          border-left:4px solid ${accent};
-        }
-
-        .total{
-          font-size:${esTermica?"14px":"19px"};
-          font-weight:900;
-        }
-
-        .balance{
-          background:${accentSoft};
-          border:2px solid ${accent};
-          padding:${esTermica?"7px":"11px"};
-          margin-top:8px;
-          font-size:${esTermica?"13px":"18px"};
-          font-weight:900;
-          display:flex;
-          justify-content:space-between;
-        }
-
-        .status{
-          display:inline-block;
-          border:1px solid ${accent};
-          padding:4px 8px;
-          font-weight:bold;
-          border-radius:20px;
-          font-size:${esTermica?"10px":"12px"};
-        }
-
-        .footer{
-          text-align:center;
-          margin-top:${esTermica?"12px":"25px"};
-          padding-top:${esTermica?"8px":"12px"};
-          border-top:1px solid #ccc;
-          font-size:${esTermica?"9px":"11px"};
-          line-height:1.5;
-        }
-
-        .thanks{
-          font-weight:bold;
-          margin-bottom:3px;
-        }
-
-        ${
-          bw
-            ? `
-              .header,
-              .section,
-              .balance{
-                border-color:#111 !important;
-              }
-
-              .orderTitle{
-                background:#111 !important;
-              }
-
-              .sectionTitle,
-              .work{
-                background:#f2f2f2 !important;
-                color:#111 !important;
-              }
-
-              .logo{
-                filter:grayscale(1) !important;
-              }
-            `
-            : ""
-        }
-
-        @media print{
-          body{
-            ${
-              tipo==="normal"
-                ? "padding:0;"
-                : "padding:0;"
-            }
-          }
-
-          .section,
-          .header,
-          .balance{
-            break-inside:avoid;
-          }
-        }
-
-      </style>
-    </head>
-
-    <body>
-      <div class="document">
-
-        <div class="header">
-
-          ${logoHtml}
-
-          <div class="brand">
-            ${esc(p.shop_name||"AG_CELL")}
+          <div class="tituloOrden">
+            ORDEN DE SERVICIO #${esc(order.number||"—")}
           </div>
 
-          <div class="subtitle">
-            ${esc(p.subtitle||"Servicio Técnico de Celulares")}
+          <div class="fecha">
+            📅 &nbsp;Fecha: ${fecha}
           </div>
 
+        </div>
+
+
+        <div class="zona">
+
+          <div class="columna">
+
+            <div class="bloque">
+
+              <div class="tituloBloque">
+                👤 &nbsp; CLIENTE
+              </div>
+
+              <div class="datos">
+                <b>Nombre:</b>
+                <span>${esc(d.customer_name||"—")}</span>
+              </div>
+
+              <div class="datos">
+                <b>Teléfono:</b>
+                <span>${esc(d.customer_phone||"—")}</span>
+              </div>
+
+            </div>
+
+
+            <div class="bloque">
+
+              <div class="tituloBloque">
+                📱 &nbsp; EQUIPO
+              </div>
+
+              <div class="datos">
+                <b>Modelo:</b>
+                <span>${esc(d.model||"—")}</span>
+              </div>
+
+              <div class="datos">
+                <b>IMEI:</b>
+                <span>${esc(d.imei||"—")}</span>
+              </div>
+
+              <div class="datos">
+                <b>Trabajo:</b>
+                <span>${esc(trabajo)}</span>
+              </div>
+
+              <div class="datos">
+                <b>Estado:</b>
+                <span class="estado">
+                  ${esc(order.status||"—")}
+                </span>
+              </div>
+
+            </div>
+
+
+            <div class="bloque valores">
+
+              <div class="tituloBloque">
+                $ &nbsp; VALORES
+              </div>
+
+              <div class="datos">
+                <b>Precio:</b>
+                <span>${money(total)}</span>
+              </div>
+
+              <div class="datos">
+                <b>Abono:</b>
+                <span>${money(abono)}</span>
+              </div>
+
+              <div class="saldo">
+                <b>Saldo pendiente:</b>
+                <b>${money(saldo)}</b>
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <div class="foto">
+            ${fotoEquipo}
+          </div>
+
+        </div>
+
+
+        <div class="bloque notas">
+
+          <div class="tituloBloque">
+            📝 &nbsp; NOTAS
+          </div>
+
+          <div class="notaTexto">
+            ${esc(order.notes||trabajo||"—")}
+          </div>
+
+        </div>
+
+
+        <div class="gracias">
+          ¡Gracias por confiar en ${nombreTienda}!
+        </div>
+
+
+        <div class="contacto">
           ${telefono}
           ${direccion}
+        </div>
 
-          <div class="orderTitle">
-            ORDEN DE SERVICIO #${esc(order.number||"—")}
-            <br>
-            <span style="font-size:${esTermica?"10px":"12px"}">
-              Fecha: ${fecha}
+
+        <div class="pie">
+          ${nombreTienda} - Servicio Técnico
+        </div>
+
+      </div>
+    `;
+
+  }else{
+
+    contenido=`
+      <div class="termica">
+
+        <div class="cabeceraTermica">
+
+          ${logo}
+
+          
+           
+
+        </div>
+
+
+        <div class="ordenTermica">
+          ORDEN DE SERVICIO #${esc(order.number||"—")}
+        </div>
+
+        <div class="fechaTermica">
+          📅 Fecha: ${fecha}
+        </div>
+
+
+        <div class="bloqueTermica">
+
+          <div class="tituloTermica">
+            👤 CLIENTE
+          </div>
+
+          <div>
+            <b>Nombre:</b>
+            ${esc(d.customer_name||"—")}
+          </div>
+
+          <div>
+            <b>Teléfono:</b>
+            ${esc(d.customer_phone||"—")}
+          </div>
+
+        </div>
+
+
+        <div class="bloqueTermica">
+
+          <div class="tituloTermica">
+            📱 EQUIPO
+          </div>
+
+          <div>
+            <b>Modelo:</b>
+            ${esc(d.model||"—")}
+          </div>
+
+          <div>
+            <b>IMEI:</b>
+            ${esc(d.imei||"—")}
+          </div>
+
+          <div>
+            <b>Trabajo:</b>
+            ${esc(trabajo)}
+          </div>
+
+          <div>
+            <b>Estado:</b>
+            <span class="estado">
+              ${esc(order.status||"—")}
             </span>
           </div>
 
         </div>
 
 
-        <div class="section">
+        <div class="bloqueTermica">
 
-          <div class="sectionTitle">
-            👤 Datos del cliente
+          <div class="tituloTermica">
+            $ VALORES
           </div>
 
-          <div class="content">
+          <div class="filaPrecio">
+            <span>Precio:</span>
+            <span>${money(total)}</span>
+          </div>
 
-            <div class="row">
-              <span class="label">Nombre</span>
-              <span class="value">
-                ${esc(d.customer_name||"—")}
-              </span>
-            </div>
+          <div class="filaPrecio">
+            <span>Abono:</span>
+            <span>${money(abono)}</span>
+          </div>
 
-            <div class="row">
-              <span class="label">Teléfono</span>
-              <span class="value">
-                ${esc(d.customer_phone||"—")}
-              </span>
-            </div>
-
+          <div class="saldoTermica">
+            <span>Saldo pendiente:</span>
+            <b>${money(saldo)}</b>
           </div>
 
         </div>
 
 
-        <div class="section">
+        <div class="bloqueTermica">
 
-          <div class="sectionTitle">
-            📱 Equipo recibido
+          <div class="tituloTermica">
+            📝 NOTAS
           </div>
 
-          <div class="content">
-
-            <div class="row">
-              <span class="label">Modelo</span>
-              <span class="value">
-                ${esc(d.model||"—")}
-              </span>
-            </div>
-
-            <div class="row">
-              <span class="label">IMEI</span>
-              <span class="value">
-                ${esc(d.imei||"—")}
-              </span>
-            </div>
-
-            ${
-              d.color
-                ? `
-                  <div class="row">
-                    <span class="label">Color</span>
-                    <span class="value">
-                      ${esc(d.color)}
-                    </span>
-                  </div>
-                `
-                : ""
-            }
-
-            <div class="row">
-              <span class="label">Estado</span>
-              <span class="value">
-                <span class="status">
-                  ${esc(order.status||"—")}
-                </span>
-              </span>
-            </div>
-
+          <div class="notaTermica">
+            ${esc(order.notes||trabajo||"—")}
           </div>
 
         </div>
 
 
-        <div class="section">
-
-          <div class="sectionTitle">
-            🔧 Trabajo solicitado
-          </div>
-
-          <div class="content">
-
-            <div class="work">
-              ${esc(trabajo)}
-            </div>
-
-          </div>
-
+        <div class="graciasTermica">
+         ¡Gracias por confiar en nosotros!
         </div>
 
 
-        <div class="section">
-
-          <div class="sectionTitle">
-            💰 Valores
-          </div>
-
-          <div class="content">
-
-            <div class="row">
-              <span class="label">Precio del servicio</span>
-              <span class="value">
-                ${money(order.total||0)}
-              </span>
-            </div>
-
-            <div class="row">
-              <span class="label">Abono recibido</span>
-              <span class="value">
-                ${money(order.deposit||0)}
-              </span>
-            </div>
-
-            <div class="balance">
-              <span>Saldo pendiente</span>
-              <span>${money(saldo)}</span>
-            </div>
-
-          </div>
-
+        <div class="contactoTermica">
+          ${telefono}
+          ${direccion}
         </div>
 
 
-        ${
-          order.notes
-            ? `
-              <div class="section">
-
-                <div class="sectionTitle">
-                  📝 Observaciones
-                </div>
-
-                <div class="content">
-
-                  <div style="
-                    font-size:${esTermica?"11px":"14px"};
-                    line-height:1.5;
-                    white-space:pre-wrap;
-                  ">
-                    ${esc(order.notes)}
-                  </div>
-
-                </div>
-
-              </div>
-            `
-            : ""
-        }
-
-
-        <div class="footer">
-
-          <div class="thanks">
-            Gracias por confiar en ${esc(p.shop_name||"AG_CELL")}
-          </div>
-
-          <div>
-            La tecnología merece una segunda oportunidad
-          </div>
-
-          ${
-            p.phone
-              ? `<div>Tel: ${esc(p.phone)}</div>`
-              : ""
-          }
-
+        <div class="pieTermica">
+          ${nombreTienda} - Servicio Técnico
         </div>
 
       </div>
-    </body>
-    </html>
-  `);
+    `;
+  }
 
-  w.document.close();
-  w.focus();
 
-  const imprimir=()=>{
-    setTimeout(()=>{
-      w.print();
-    },400);
+  document.body.innerHTML=`
+
+    <style>
+
+      *{
+        box-sizing:border-box;
+      }
+
+      @page{
+        ${
+          esNormal
+            ? "size:A4;margin:8mm;"
+            : es80
+              ? "size:80mm auto;margin:3mm;"
+              : "size:58mm auto;margin:2mm;"
+        }
+      }
+
+      html,body{
+        margin:0;
+        padding:0;
+        background:white;
+        color:${negro};
+        font-family:Arial,Helvetica,sans-serif;
+        -webkit-print-color-adjust:exact;
+        print-color-adjust:exact;
+      }
+
+      body{
+        ${
+          esNormal
+            ? "width:100%;"
+            : "width:100%;"
+        }
+      }
+
+      .hoja{
+        width:100%;
+        max-width:760px;
+        margin:auto;
+      }
+
+      .cabecera{
+        text-align:center;
+        border:2px solid ${acento};
+        border-radius:12px;
+        padding:10px 15px 0;
+      }
+
+      .logo{
+        width:${esNormal?"145px":"72px"};
+        height:${esNormal?"145px":"72px"};
+        object-fit:contain;
+        display:block;
+        margin:0 auto 3px;
+        ${bw?"filter:grayscale(1);":""}
+      }
+
+      .marca{
+        font-weight:900;
+        font-size:${esNormal?"35px":es80?"22px":"18px"};
+        line-height:1;
+        letter-spacing:-1px;
+      }
+
+      .servicio{
+        font-weight:900;
+        font-size:${esNormal?"20px":es80?"13px":"11px"};
+      }
+
+      .lema{
+        font-weight:bold;
+        font-style:italic;
+        font-size:${esNormal?"15px":es80?"10px":"9px"};
+        margin:4px 0 8px;
+      }
+
+      .categorias{
+        display:flex;
+        background:${negro};
+        color:white;
+        border-radius:12px;
+        overflow:hidden;
+        margin:8px 0 8px;
+      }
+
+      .categorias div{
+        flex:1;
+        padding:7px 4px;
+        font-size:11px;
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        gap:5px;
+        border-right:1px solid white;
+      }
+
+      .categorias div:last-child{
+        border-right:0;
+      }
+
+      .tituloOrden{
+        background:${negro};
+        color:white;
+        font-weight:900;
+        font-size:${esNormal?"24px":"15px"};
+        padding:7px;
+        border-radius:12px;
+      }
+
+      .fecha{
+        font-size:${esNormal?"19px":"12px"};
+        font-weight:bold;
+        padding:8px;
+      }
+
+      .zona{
+        display:flex;
+        gap:15px;
+        margin-top:10px;
+      }
+
+      .columna{
+        flex:1;
+      }
+
+      .foto{
+        width:34%;
+        display:flex;
+        justify-content:center;
+        align-items:center;
+      }
+
+      .fotoEquipo{
+        max-width:100%;
+        max-height:300px;
+        object-fit:contain;
+        ${bw?"filter:grayscale(1);":""}
+      }
+
+      .bloque{
+        border:2px solid ${negro};
+        border-radius:13px;
+        margin-bottom:10px;
+        overflow:hidden;
+      }
+
+      .tituloBloque{
+        display:inline-block;
+        background:${negro};
+        color:white;
+        font-weight:900;
+        font-size:${esNormal?"17px":"12px"};
+        padding:5px 14px;
+        border-radius:0 0 12px 0;
+      }
+
+      .datos{
+        display:flex;
+        gap:8px;
+        padding:3px 12px;
+        font-size:${esNormal?"14px":"11px"};
+        line-height:1.25;
+      }
+
+      .datos b{
+        min-width:${esNormal?"82px":"55px"};
+      }
+
+      .datos span{
+        flex:1;
+      }
+
+      .estado{
+        background:${negro};
+        color:white;
+        border-radius:15px;
+        padding:2px 9px;
+        font-weight:bold;
+      }
+
+      .saldo{
+        background:${negro};
+        color:white;
+        display:flex;
+        justify-content:space-between;
+        padding:6px 12px;
+        font-size:${esNormal?"15px":"11px"};
+      }
+
+      .notas{
+        margin-top:5px;
+      }
+
+      .notaTexto{
+        padding:8px 12px;
+        font-size:${esNormal?"14px":"11px"};
+        min-height:30px;
+      }
+
+      .gracias{
+        background:${negro};
+        color:white;
+        text-align:center;
+        font-size:${esNormal?"17px":"11px"};
+        font-weight:bold;
+        font-style:italic;
+        padding:7px;
+        margin-top:10px;
+      }
+
+      .contacto{
+        display:flex;
+        justify-content:center;
+        gap:20px;
+        font-size:${esNormal?"13px":"9px"};
+        font-weight:bold;
+        padding:7px;
+        border-bottom:2px solid ${negro};
+      }
+
+      .pie{
+        background:${negro};
+        color:white;
+        text-align:center;
+        font-weight:bold;
+        font-size:${esNormal?"16px":"10px"};
+        padding:7px;
+      }
+
+
+      /* TÉRMICA */
+
+      .termica{
+        width:100%;
+        text-align:left;
+      }
+
+      .cabeceraTermica{
+        text-align:center;
+        border-bottom:2px solid ${negro};
+        padding-bottom:5px;
+      }
+
+      .cabeceraTermica .logo{
+        width:${es80?"78px":"58px"};
+        height:${es80?"78px":"58px"};
+      }
+
+      .ordenTermica{
+        background:${negro};
+        color:white;
+        text-align:center;
+        font-size:${es80?"16px":"12px"};
+        font-weight:900;
+        padding:6px 3px;
+        margin-top:6px;
+      }
+
+      .fechaTermica{
+        text-align:center;
+        font-weight:bold;
+        font-size:${es80?"11px":"9px"};
+        padding:5px 0;
+      }
+
+      .bloqueTermica{
+        border-bottom:1px solid ${negro};
+        padding:5px 0;
+        font-size:${es80?"11px":"9px"};
+        line-height:1.4;
+      }
+
+      .tituloTermica{
+        background:${fondo};
+        color:${acento};
+        font-weight:900;
+        padding:3px 5px;
+        margin-bottom:3px;
+      }
+
+      .filaPrecio{
+        display:flex;
+        justify-content:space-between;
+      }
+
+      .saldoTermica{
+        background:${negro};
+        color:white;
+        display:flex;
+        justify-content:space-between;
+        padding:4px 5px;
+        margin-top:3px;
+        font-size:${es80?"11px":"9px"};
+      }
+
+      .notaTermica{
+        min-height:22px;
+        white-space:pre-wrap;
+      }
+
+      .graciasTermica{
+        text-align:center;
+        font-weight:bold;
+        font-style:italic;
+        font-size:${es80?"11px":"9px"};
+        padding:7px 2px;
+      }
+
+      .contactoTermica{
+        text-align:center;
+        font-size:${es80?"9px":"7px"};
+        font-weight:bold;
+        padding:4px 0;
+        border-top:1px solid ${negro};
+      }
+
+      .contactoTermica span{
+        display:block;
+        margin:2px 0;
+      }
+
+      .pieTermica{
+        background:${negro};
+        color:white;
+        text-align:center;
+        font-weight:bold;
+        font-size:${es80?"10px":"8px"};
+        padding:5px 2px;
+      }
+
+      @media print{
+
+        body{
+          margin:0 !important;
+          padding:0 !important;
+        }
+
+        .hoja,
+        .termica{
+          page-break-inside:avoid;
+        }
+
+      }
+
+    </style>
+
+    ${contenido}
+  `;
+
+
+  const tituloAnterior=document.title;
+
+  document.title=
+    "AG_CELL - Orden #"+(order.number||"");
+
+
+  const restaurar=()=>{
+
+    window.removeEventListener(
+      "afterprint",
+      restaurar
+    );
+
+    document.body.innerHTML=originalBody;
+    document.title=originalTitle;
+
+    try{
+      render();
+    }catch(e){}
   };
 
-  const imagenes=Array.from(w.document.images);
 
-  if(!imagenes.length){
-    imprimir();
-  }else{
-    let pendientes=imagenes.length;
+  window.addEventListener(
+    "afterprint",
+    restaurar
+  );
 
-    const listo=()=>{
-      pendientes--;
 
-      if(pendientes<=0){
-        imprimir();
-      }
-    };
+  setTimeout(()=>{
+    window.print();
+  },300);
 
-    imagenes.forEach(img=>{
-      if(img.complete){
-        listo();
-      }else{
-        img.onload=listo;
-        img.onerror=listo;
-      }
-    });
-
-    setTimeout(imprimir,2000);
-  }
 }
+  
+
   function newOrder(){if(!state.devices.length){toast("Primero recibe un equipo",true);newDevice();return}state.tab="ordenes";$("main").innerHTML=orderForm()}
 function editOrder(id){state.tab="ordenes";$("main").innerHTML=orderForm(state.orders.find(x=>x.id===id)||{})}
 async function saveOrder(id){const old=state.orders.find(x=>x.id===id),total=Number($("o_total").value||0),dep=Number($("o_deposit").value||0);if(dep>total){toast("El abono no puede superar el total",true);return}const o={id:id||crypto.randomUUID(),user_id:state.session.user.id,device_id:$("o_device").value,work:$("o_work").value,status:$("o_status").value,total,deposit:dep,notes:$("o_notes").value,received_at:old?.received_at||new Date().toISOString(),updated_at:new Date().toISOString()};const {data,error}=await sb.from("orders").upsert(o).select().single();if(error){toast(error.message,true);return}state.orders=[...state.orders.filter(x=>x.id!==o.id),data];saveCache();toast("Orden guardada");ordersView()}
