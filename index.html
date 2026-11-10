@@ -689,7 +689,7 @@ function imprimirOrden(orderId){
   const saldo=Math.max(0,total-abono);
 
   const logo = "";
-const cabeceraNormal = "./Recibos AG_CELL en blanco y negro2.png";
+const plantillaNormal = "./Plantillas de servicio técnico AG_CELL2.png";
 const cabeceraTermica = "./WhatsApp Image 2026-11-09 at 8.38.19 PM.jpeg";
 
   const fotoObj=(state.photos||[]).find(x=>
@@ -735,157 +735,162 @@ const cabeceraTermica = "./WhatsApp Image 2026-11-09 at 8.38.19 PM.jpeg";
 
   let contenido="";
 
-  if(esNormal){
+ 
+if(esNormal){
 
-    contenido=`
-      <div class="hoja">
+  contenido=`
+    <div class="hojaPlantilla" style="
+      position:relative;
+      width:100%;
+      max-width:658px;
+      aspect-ratio:658 / 1000;
+      margin:auto;
+      overflow:hidden;
+      font-family:Arial,sans-serif;
+      color:#111;
+    ">
 
-    <div class="cabecera">
+      <img src="${plantillaNormal}" style="
+        position:absolute;
+        inset:0;
+        width:100%;
+        height:100%;
+        object-fit:fill;
+      ">
 
-  <div class="marca">AG_CELL</div>
+      <style>
+        .hojaPlantilla .campo{
+          position:absolute;
+          box-sizing:border-box;
+          font-weight:bold;
+          font-size:clamp(9px,2.2vw,16px);
+          line-height:1.25;
+          overflow-wrap:anywhere;
+        }
+        .hojaPlantilla .fotoEquipo{
+          width:100%;
+          height:100%;
+          object-fit:contain;
+        }
+      </style>
 
-  <div class="servicio">SERVICIO TÉCNICO</div>
-
-  <div class="lema">
-    La tecnología merece una segunda oportunidad
-  </div>
-
-  <div class="categorias">
-    <div>📱 <b>Reparación<br>de celulares</b></div>
-    <div>📱 <b>Cambio de<br>pantallas</b></div>
-    <div>⚙ <b>Software y<br>más...</b></div>
-  </div>
-
-</div>
-
-          <div class="tituloOrden">
-            ORDEN DE SERVICIO #${esc(order.number||"—")}
-          </div>
-
-          <div class="fecha">
-            📅 &nbsp;Fecha: ${fecha}
-          </div>
-
-        </div>
-
-
-        <div class="zona">
-
-          <div class="columna">
-
-            <div class="bloque">
-
-              <div class="tituloBloque">
-                👤 &nbsp; CLIENTE
-              </div>
-
-              <div class="datos">
-                <b>Nombre:</b>
-                <span>${esc(d.customer_name||"—")}</span>
-              </div>
-
-              <div class="datos">
-                <b>Teléfono:</b>
-                <span>${esc(d.customer_phone||"—")}</span>
-              </div>
-
-            </div>
-
-
-            <div class="bloque">
-
-              <div class="tituloBloque">
-                📱 &nbsp; EQUIPO
-              </div>
-
-              <div class="datos">
-                <b>Modelo:</b>
-                <span>${esc(d.model||"—")}</span>
-              </div>
-
-              <div class="datos">
-                <b>IMEI:</b>
-                <span>${esc(d.imei||"—")}</span>
-              </div>
-
-              <div class="datos">
-                <b>Trabajo:</b>
-                <span>${esc(trabajo)}</span>
-              </div>
-
-              <div class="datos">
-                <b>Estado:</b>
-                <span class="estado">
-                  ${esc(order.status||"—")}
-                </span>
-              </div>
-
-            </div>
-
-
-            <div class="bloque valores">
-
-              <div class="tituloBloque">
-                $ &nbsp; VALORES
-              </div>
-
-              <div class="datos">
-                <b>Precio:</b>
-                <span>${money(total)}</span>
-              </div>
-
-              <div class="datos">
-                <b>Abono:</b>
-                <span>${money(abono)}</span>
-              </div>
-
-              <div class="saldo">
-                <b>Saldo pendiente:</b>
-                <b>${money(saldo)}</b>
-              </div>
-
-            </div>
-
-          </div>
-
-
-          <div class="foto">
-            ${fotoEquipo}
-          </div>
-
-        </div>
-
-
-        <div class="bloque notas">
-
-          <div class="tituloBloque">
-            📝 &nbsp; NOTAS
-          </div>
-
-          <div class="notaTexto">
-            ${esc(order.notes||trabajo||"—")}
-          </div>
-
-        </div>
-
-
-        <div class="gracias">
-         ¡Gracias por confiar en nosotros!
-        </div>
-
-
-        <div class="contacto">
-          ${telefono}
-          ${direccion}
-        </div>
-
-
-        <div class="pie">
-         Servicio Técnico
-        </div>
-
+      <!-- Número de orden -->
+      <div class="campo" style="
+        left:38%;top:31.1%;width:48%;height:3.5%;
+        color:white;text-align:center;
+        font-size:clamp(13px,3.5vw,23px);
+      ">
+        ${esc(order.number||"—")}
       </div>
-    `;
+
+      <!-- Fecha -->
+      <div class="campo" style="
+        left:40%;top:36.8%;width:42%;height:3%;
+        background:#fff;
+        font-size:clamp(11px,2.8vw,19px);
+      ">
+        ${fecha}
+      </div>
+
+      <!-- Datos del cliente -->
+      <div style="
+        position:absolute;left:27%;top:43.7%;
+        width:39%;height:5.5%;background:#fff;
+      "></div>
+
+      <div class="campo" style="left:28%;top:44%;width:38%;">
+        ${esc(d.customer_name||"—")}
+      </div>
+
+      <div class="campo" style="left:28%;top:47.1%;width:38%;">
+        ${esc(d.customer_phone||"—")}
+      </div>
+
+      <!-- Datos del equipo -->
+      <div style="
+        position:absolute;left:27%;top:55.5%;
+        width:39%;height:11.5%;background:#fff;
+      "></div>
+
+      <div class="campo" style="left:28%;top:56%;width:38%;">
+        ${esc(d.model||"—")}
+      </div>
+
+      <div class="campo" style="left:28%;top:59%;width:38%;">
+        ${esc(d.imei||"—")}
+      </div>
+
+      <div class="campo" style="left:28%;top:62%;width:38%;">
+        ${esc(trabajo)}
+      </div>
+
+      <div class="campo" style="left:28%;top:65%;width:38%;">
+        ${esc(order.status||"—")}
+      </div>
+
+      <!-- Foto del equipo -->
+      <div style="
+        position:absolute;left:69%;top:39.5%;
+        width:30%;height:30%;
+        background:#fff;
+        display:flex;align-items:center;justify-content:center;
+      ">
+        ${fotoEquipo}
+      </div>
+
+      <!-- Valores -->
+      <div style="
+        position:absolute;left:28%;top:71.7%;
+        width:37%;height:4.7%;background:#fff;
+      "></div>
+
+      <div class="campo" style="
+        left:47%;top:71.8%;width:17%;
+        text-align:right;
+      ">
+        ${money(total)}
+      </div>
+
+      <div class="campo" style="
+        left:47%;top:75%;width:17%;
+        text-align:right;
+      ">
+        ${money(abono)}
+      </div>
+
+      <div class="campo" style="
+        left:52%;top:77.2%;width:14%;
+        text-align:right;font-size:clamp(12px,3vw,21px);
+      ">
+        ${money(saldo)}
+      </div>
+
+      <!-- Notas -->
+      <div style="
+        position:absolute;left:5%;top:85.1%;
+        width:73%;height:3.5%;background:#fff;
+      "></div>
+
+      <div class="campo" style="
+        left:6%;top:85.3%;width:70%;height:3%;
+      ">
+        ${esc(order.notes||trabajo||"—")}
+      </div>
+
+      <!-- Teléfono y dirección -->
+      <div class="campo" style="
+        left:20%;top:93.5%;width:60%;height:2.5%;
+        color:white;text-align:center;
+        font-size:clamp(9px,2vw,14px);
+      ">
+        ${esc(p.phone||"")} ${p.address?" | "+esc(p.address):""}
+      </div>
+
+    </div>
+  `;
+
+}
+
 
   }else{
 
