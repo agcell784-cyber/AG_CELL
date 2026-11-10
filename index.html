@@ -688,9 +688,14 @@ function imprimirOrden(orderId){
   const abono=Number(order.deposit||0);
   const saldo=Math.max(0,total-abono);
 
-  const logo=p.logo_url
-    ? `<img class="logo" src="${esc(p.logo_url)}">`
-    : "";
+  const logo = "";
+const cabeceraNormal = bw
+  ? "./agcell-cabecera-bn-normal.png"
+  : "./agcell-cabecera-color-normal.png";
+
+const cabeceraTermica = bw
+  ? "./agcell-cabecera-bn-termica.png"
+  : "./agcell-cabecera-color-termica.png";
 
   const fotoObj=(state.photos||[]).find(x=>
     x.device_id===d.id &&
@@ -740,15 +745,9 @@ function imprimirOrden(orderId){
     contenido=`
       <div class="hoja">
 
-        <div class="cabecera">
-
-  ${logo}
-
-  <div class="categorias">
-    <div>📱<b>Reparación<br>de Celulares</b></div>
-    <div>📱<b>Cambio de<br>Pantallas</b></div>
-    <div>⚙<b>Software y<br>más...</b></div>
-  </div>
+    <div class="cabecera">
+  <img class="cabeceraImagen" src="${cabeceraNormal}">
+</div>
          
 
           <div class="tituloOrden">
@@ -885,15 +884,9 @@ function imprimirOrden(orderId){
     contenido=`
       <div class="termica">
 
-        <div class="cabeceraTermica">
-
-          ${logo}
-
-          
-           
-
-        </div>
-
+       <div class="cabeceraTermica">
+  <img class="cabeceraImagenTermica" src="${cabeceraTermica}">
+</div>
 
         <div class="ordenTermica">
           ORDEN DE SERVICIO #${esc(order.number||"—")}
@@ -1068,7 +1061,21 @@ function imprimirOrden(orderId){
         margin:0 auto 3px;
         ${bw?"filter:grayscale(1);":""}
       }
+.cabeceraImagen{
+  width:100%;
+  height:auto;
+  display:block;
+  margin:0 auto;
+  object-fit:contain;
+}
 
+.cabeceraImagenTermica{
+  width:100%;
+  height:auto;
+  display:block;
+  margin:0 auto 8px;
+  object-fit:contain;
+}
       .marca{
         font-weight:900;
         font-size:${esNormal?"35px":es80?"22px":"18px"};
@@ -1390,9 +1397,20 @@ function imprimirOrden(orderId){
   );
 
 
+ const imagenes = Array.from(document.images);
+
+Promise.all(imagenes.map(img=>{
+  if(img.complete) return Promise.resolve();
+
+  return new Promise(resolve=>{
+    img.onload = resolve;
+    img.onerror = resolve;
+  });
+})).then(()=>{
   setTimeout(()=>{
     window.print();
   },300);
+});
 
 }
   
