@@ -689,13 +689,8 @@ function imprimirOrden(orderId){
   const saldo=Math.max(0,total-abono);
 
   const logo = "";
-const cabeceraNormal = bw
-  ? "./agcell-cabecera-bn-normal.png"
-  : "./agcell-cabecera-color-normal.png";
-
-const cabeceraTermica = bw
-  ? "./agcell-cabecera-bn-termica.png"
-  : "./agcell-cabecera-color-termica.png";
+const cabeceraNormal = "./Recibos AG_CELL en blanco y negro2.png";
+const cabeceraTermica = "./WhatsApp Image 2026-11-09 at 8.38.19 PM.jpeg";
 
   const fotoObj=(state.photos||[]).find(x=>
     x.device_id===d.id &&
@@ -746,9 +741,22 @@ const cabeceraTermica = bw
       <div class="hoja">
 
     <div class="cabecera">
-  <img class="cabeceraImagen" src="${cabeceraNormal}">
+
+  <div class="marca">AG_CELL</div>
+
+  <div class="servicio">SERVICIO TÉCNICO</div>
+
+  <div class="lema">
+    La tecnología merece una segunda oportunidad
+  </div>
+
+  <div class="categorias">
+    <div>📱 <b>Reparación<br>de celulares</b></div>
+    <div>📱 <b>Cambio de<br>pantallas</b></div>
+    <div>⚙ <b>Software y<br>más...</b></div>
+  </div>
+
 </div>
-         
 
           <div class="tituloOrden">
             ORDEN DE SERVICIO #${esc(order.number||"—")}
@@ -1046,23 +1054,52 @@ const cabeceraTermica = bw
         margin:auto;
       }
 
-      .cabecera{
-        text-align:center;
-        border:2px solid ${acento};
-        border-radius:12px;
-        padding:10px 15px 0;
-      }
+     .cabecera{
+  text-align:center;
+  border:2px solid ${negro};
+  border-radius:12px;
+  padding:10px 12px;
+  margin-bottom:10px;
+}
+
+.marca{
+  font-weight:900;
+  font-size:${esNormal?"35px":es80?"22px":"18px"};
+  line-height:1;
+  letter-spacing:-1px;
+}
+
+.servicio{
+  font-weight:900;
+  font-size:${esNormal?"20px":es80?"13px":"11px"};
+}
+
+.lema{
+  font-weight:bold;
+  font-style:italic;
+  font-size:${esNormal?"15px":es80?"10px":"9px"};
+  margin:4px 0 8px;
+}
+
+.categorias{
+  display:flex;
+  background:${negro};
+  color:white;
+  border-radius:12px;
+  overflow:hidden;
+  margin:8px 0 0;
+}
 
       .logo{
-        width:${esNormal?"145px":"72px"};
-        height:${esNormal?"145px":"72px"};
-        object-fit:contain;
-        display:block;
-        margin:0 auto 3px;
-        ${bw?"filter:grayscale(1);":""}
-      }
+  width:100%;
+  height:auto;
+  object-fit:contain;
+  display:block;
+  margin:0 auto;
+}
 .cabeceraImagen{
   width:100%;
+  max-width:760px;
   height:auto;
   display:block;
   margin:0 auto;
@@ -1071,6 +1108,7 @@ const cabeceraTermica = bw
 
 .cabeceraImagenTermica{
   width:100%;
+  max-width:760px;
   height:auto;
   display:block;
   margin:0 auto 8px;
@@ -1115,9 +1153,17 @@ const cabeceraTermica = bw
         border-right:1px solid white;
       }
 
-      .categorias div:last-child{
-        border-right:0;
-      }
+      .categorias div{
+  flex:1;
+  text-align:center;
+  padding:8px 3px;
+  font-size:${esNormal?"12px":"9px"};
+  border-right:1px solid white;
+}
+
+.categorias div:last-child{
+  border-right:0;
+}
 
       .tituloOrden{
         background:${negro};
