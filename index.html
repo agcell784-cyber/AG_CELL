@@ -1625,5 +1625,14 @@ let deferredInstallPrompt=null;
 window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferredInstallPrompt=e;window.dispatchEvent(new Event("agcell-install-ready"));});
 boot();
 </script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./service-worker.js")
+      .then(() => console.log("AG_CELL listo para instalar"))
+      .catch(error => console.error("Error Service Worker:", error));
+  });
+}
+</script>
 </body>
 </html>
